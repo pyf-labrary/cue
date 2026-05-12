@@ -1,15 +1,27 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { getScene, CONCEPT_META } from '@/data/scenes';
 import { EMOTIONS } from '@/data/emotions';
 import { getInstrument } from '@/data/instruments';
 import MultiTrackPlayer from '@/components/audio/MultiTrackPlayer';
-import { useLegacyTransportShortcuts } from '@/lib/useKeyboardShortcuts';
-import { scenePlayer } from '@/lib/scenePlayer';
+import { useTransportShortcuts } from '@/lib/useKeyboardShortcuts';
+import { sceneToComposition } from '@/lib/composition';
+import { encodeComposition, saveToStorage } from '@/lib/compositionShare';
 
 export default function SceneDetail() {
   const { slug = '' } = useParams();
   const scene = getScene(slug);
-  useLegacyTransportShortcuts({ player: scenePlayer });
+  const navigate = useNavigate();
+  useTransportShortcuts();
+
+  function openInSandbox() {
+    if (!scene) return;
+    const comp = sceneToComposition(scene);
+    // Stash to sandbox slot so even a refresh keeps it; also stuff into URL
+    // so the address bar reflects what's loaded.
+    saveToStorage('sandbox', comp);
+    const encoded = encodeComposition(comp);
+    navigate(`/sandbox?s=${encoded}`);
+  }
 
   if (!scene) {
     return (
@@ -107,8 +119,20 @@ export default function SceneDetail() {
 
       {/* PLAYER */}
       <section className="mb-12">
-        <div className="h-eyebrow mb-3">五轨拆解</div>
-        <h2 className="h-display text-3xl text-ink-100 mb-6">点 Solo 单听一条；点 Mute 关一条。</h2>
+        <div className="flex items-end justify-between mb-3">
+          <div>
+            <div className="h-eyebrow">五轨拆解</div>
+            <h2 className="h-display text-3xl text-ink-100 mt-1">点 Solo 单听一条；点 Mute 关一条。</h2>
+          </div>
+          <button
+            type="button"
+            onClick={openInSandbox}
+            className="text-[12px] px-3 py-1.5 rounded-full border border-ink-700 text-ink-300 hover:text-accent hover:border-accent transition"
+            title="复制这一场到试听台，自由增删 clip"
+          >
+            在试听台打开 →
+          </button>
+        </div>
         <MultiTrackPlayer scene={scene} />
         <p className="mt-4 text-ink-400 text-sm max-w-[640px] leading-relaxed">
           这段配乐是在浏览器里用我们图鉴中的乐器合成出来的——不是从原片剪的。所以你可以拆开听 MX

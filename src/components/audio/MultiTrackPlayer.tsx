@@ -1,42 +1,67 @@
-import { useEffect, useMemo } from 'react';
-import { scenePlayer, useScenePlayer } from '@/lib/scenePlayer';
+/**
+ * Multi-track scene player UI on top of compositionPlayer.
+ *
+ * Builds a Composition from the Scene on mount, drives it through the global
+ * compositionPlayer singleton, renders 5 lanes with track marks, annotations,
+ * and per-lane mute/solo controls.
+ */
+import { useEffect, useMemo, useState } from 'react';
+import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
+import {
+  sceneToComposition,
+  setLaneMute,
+  toggleLaneSolo,
+  type Composition,
+} from '@/lib/composition';
 import { TRACK_META, type Scene, type TrackId, type Annotation } from '@/data/scenes';
+import SpectrumStrip from '@/components/visual/SpectrumStrip';
 
 const TRACK_ORDER: TrackId[] = ['mx', 'fx', 'nx', 'dx', 'vo'];
 
 export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
-  const state = useScenePlayer();
-  const isThisScene = state.scene?.slug === scene.slug;
+  // Build a fresh composition from the scene whenever it changes.
+  const baseComp = useMemo(() => sceneToComposition(scene), [scene]);
+  // Mute/solo state lives here so we can drive patches into the engine without
+  // re-warming Howl every time the user clicks M/S.
+  const [comp, setComp] = useState<Composition>(baseComp);
 
-  // Load scene on mount; unload on unmount
-  useEffect(() => {
-    scenePlayer.load(scene);
-    return () => {
-      scenePlayer.stop();
-    };
-  }, [scene]);
-
-  const playing = isThisScene && state.status === 'playing';
-  const current = isThisScene ? state.currentSec : 0;
+  const state = useCompositionPlayer();
+  const playing = state.status === 'playing';
+  const current = state.currentSec;
   const dur = scene.durationSec;
   const pct = Math.max(0, Math.min(100, (current / dur) * 100));
 
-  // Pre-compute event marks per track for the lane visualization
+  // Load scene composition on mount / scene change.
+  useEffect(() => {
+    setComp(baseComp);
+    void compositionPlayer.setComposition(baseComp);
+    return () => {
+      compositionPlayer.stop();
+    };
+  }, [baseComp]);
+  // Apply mute/solo edits live.
+  useEffect(() => {
+    compositionPlayer.patchComposition(comp);
+  }, [comp]);
+
   const trackMarks = useMemo(() => buildTrackMarks(scene), [scene]);
 
-  // Active annotations — within ±0.4s window
   const activeAnnotations = useMemo(
     () => scene.annotations.filter((a) => Math.abs(a.at - current) < 0.6),
     [scene, current]
   );
 
+  function laneAudible(tid: TrackId): boolean {
+    if (comp.laneSolo) return comp.laneSolo === tid;
+    return !comp.laneMute[tid];
+  }
+
   return (
     <div className="rounded-2xl border border-ink-700 bg-ink-800/40 overflow-hidden">
-      {/* Transport bar */}
       <div className="flex items-center gap-4 px-6 py-4 border-b border-ink-700/60">
         <button
           type="button"
-          onClick={() => (playing ? scenePlayer.pause() : scenePlayer.play())}
+          onClick={() => (playing ? compositionPlayer.pause() : compositionPlayer.play())}
           className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-accent text-ink-900 hover:scale-105 transition disabled:opacity-50"
           disabled={state.status === 'loading'}
           aria-pressed={playing}
@@ -56,29 +81,29 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
         </button>
         <button
           type="button"
-          onClick={() => scenePlayer.stop()}
+          onClick={() => compositionPlayer.stop()}
           className="text-xs text-ink-400 hover:text-ink-200 transition px-3 py-1 rounded-full border border-ink-700"
         >
           回到起点
         </button>
+        <div className="flex-1 mx-3 opacity-70 max-w-[280px] hidden sm:block">
+          <SpectrumStrip height={22} />
+        </div>
         <div className="ml-auto font-mono text-sm text-ink-300 tabular-nums">
           {fmt(current)} <span className="text-ink-500">/</span> {fmt(dur)}
         </div>
       </div>
 
-      {/* Tracks */}
       <div className="px-6 py-5 space-y-2">
         {TRACK_ORDER.map((tid) => {
           const meta = TRACK_META[tid];
           const marks = trackMarks[tid] ?? [];
-          const isMuted = isThisScene && state.muted[tid];
-          const isSoloed = isThisScene && state.solo === tid;
-          const otherSoloed = isThisScene && state.solo && state.solo !== tid;
-          const isAudibleNow = !isMuted && !otherSoloed;
+          const isMuted = comp.laneMute[tid];
+          const isSoloed = comp.laneSolo === tid;
+          const isAudibleNow = laneAudible(tid);
           const isEmpty = marks.length === 0 && tid !== 'nx';
           return (
             <div key={tid} className="grid grid-cols-[100px_1fr_auto] items-center gap-4">
-              {/* Label */}
               <div className="flex items-center gap-2">
                 <span
                   className="font-mono text-[10px] px-2 py-0.5 rounded"
@@ -101,12 +126,10 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
                 )}
               </div>
 
-              {/* Lane */}
               <div
                 className="relative h-10 rounded bg-ink-900/60 overflow-hidden border border-ink-700/40"
                 style={{ opacity: isAudibleNow ? 1 : 0.25 }}
               >
-                {/* Mark blobs */}
                 {marks.map((m, i) => (
                   <div
                     key={i}
@@ -124,25 +147,23 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
                     （本场景无 {meta.label}）
                   </div>
                 )}
-                {/* Playhead */}
                 <div
                   className="absolute top-0 bottom-0 w-px bg-ink-100"
                   style={{ left: `${pct}%`, transition: playing ? 'left 0.05s linear' : 'none' }}
                 />
               </div>
 
-              {/* Controls */}
               <div className="flex items-center gap-1">
                 <SmallToggle
                   active={isMuted}
-                  onClick={() => scenePlayer.setMuted(tid, !state.muted[tid])}
+                  onClick={() => setComp((c) => setLaneMute(c, tid, !c.laneMute[tid]))}
                   label="M"
                   title="静音"
                   activeColor="#D86B6B"
                 />
                 <SmallToggle
                   active={isSoloed}
-                  onClick={() => scenePlayer.toggleSolo(tid)}
+                  onClick={() => setComp((c) => toggleLaneSolo(c, tid))}
                   label="S"
                   title="独奏"
                   activeColor="#E6C36B"
@@ -153,7 +174,6 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
         })}
       </div>
 
-      {/* Annotation strip */}
       <div className="border-t border-ink-700/60 px-6 py-4 min-h-[60px] bg-ink-900/40">
         <div className="h-eyebrow mb-2 text-ink-400">导演笔记</div>
         {activeAnnotations.length === 0 ? (
@@ -165,7 +185,6 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
         )}
       </div>
 
-      {/* Annotation timeline preview */}
       <div className="border-t border-ink-700/60 px-6 py-3 bg-ink-800/60">
         <div className="relative h-1.5 bg-ink-700/40 rounded">
           {scene.annotations.map((a, i) => (
@@ -178,7 +197,7 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
                 background: a.track ? TRACK_META[a.track].color : '#E6C36B',
               }}
               title={a.text}
-              onClick={() => scenePlayer.seek(a.at)}
+              onClick={() => compositionPlayer.seek(a.at)}
             />
           ))}
           <div
@@ -245,14 +264,9 @@ function fmt(s: number): string {
 
 function buildTrackMarks(scene: Scene) {
   const marks: Record<TrackId, Array<{ start: number; end: number; vel?: number }>> = {
-    mx: [],
-    fx: [],
-    nx: [],
-    dx: [],
-    vo: [],
+    mx: [], fx: [], nx: [], dx: [], vo: [],
   };
   if (scene.mxAudio) {
-    // Real audio: show one solid block spanning the full scene
     marks.mx.push({ start: 0, end: scene.durationSec, vel: 0.9 });
   } else {
     for (const n of scene.tracks.mx ?? []) {
@@ -268,7 +282,6 @@ function buildTrackMarks(scene: Scene) {
   return marks;
 }
 
-/** Crude beat-to-second conversion at a default 80 BPM — good enough for blob sizing. */
 function estimateDurSec(dur: string): number {
   const bpm = 80;
   const sec = 60 / bpm;

@@ -121,40 +121,43 @@ export const SCENES: Scene[] = [
     description:
       '威廉姆斯写"鲨鱼"主题时只用了两个音——E 和 F，半音关系。一开始稀疏，越来越密、越来越响——把"还没看见但正在接近"做成了听觉物理学。\n\n这条 ostinato 不是配乐，是心跳。它的设计目标只有一个：当画面切到水下视角，观众的脉搏自动跟着它加速。',
     instruments: ['contrabass', 'timpani', 'french-horn'],
+    // TIMING NOTE: durationSec / annotation.at / fx.at / nx.{startAt,endAt}
+    // were rescaled (×2.14) when MX was switched from the synth fallback
+    // (24 s) to the AI mp3 (55.7 s). Linear scaling is approximate — listen
+    // once and hand-tune around the timpani entry + horn climax.
     annotations: [
       { at: 0,   text: '低音提琴极轻、稀疏。还不是"鲨鱼"，是远方的预感。', track: 'mx' },
-      { at: 6,   text: '间距收紧——鲨鱼在靠近。', track: 'mx' },
-      { at: 12,  text: '定音鼓加入。心跳第一次浮出水面。', track: 'fx' },
-      { at: 18,  text: '圆号长音叠在上面，"它"现在已经在画面里。', track: 'mx' },
+      { at: 13,  text: '间距收紧——鲨鱼在靠近。', track: 'mx' },
+      { at: 26,  text: '定音鼓加入。心跳第一次浮出水面。', track: 'fx' },
+      { at: 39,  text: '圆号长音叠在上面，"它"现在已经在画面里。', track: 'mx' },
     ],
-    durationSec: 26,
+    durationSec: 56,
     mxAudio: '/scenes/jaws/mx.mp3',
     mxAudioGain: 0.85,
     tracks: {
       mx: [
-        // 4 phases: sparse → tighter → tight + horn → climax
-        ...buildJawsOstinato(0,  6, 1.6, 'contrabass'),  // phase 1: every 1.6s
-        ...buildJawsOstinato(6,  12, 0.8, 'contrabass'), // phase 2: every 0.8s
-        ...buildJawsOstinato(12, 18, 0.45, 'contrabass'),
-        ...buildJawsOstinato(18, 24, 0.3, 'contrabass'),
-        // French horn long tones over phase 4
-        { inst: 'french-horn', note: 'C3',  dur: '1n', at: 18, vel: 0.5 },
-        { inst: 'french-horn', note: 'D#3', dur: '1n', at: 22, vel: 0.6 },
+        // 4 phases: sparse → tighter → tight + horn → climax — only used
+        // as visualisation source; real MX is the mp3.
+        ...buildJawsOstinato(0,  13, 1.6, 'contrabass'),
+        ...buildJawsOstinato(13, 26, 0.8, 'contrabass'),
+        ...buildJawsOstinato(26, 39, 0.45, 'contrabass'),
+        ...buildJawsOstinato(39, 52, 0.3, 'contrabass'),
+        { inst: 'french-horn', note: 'C3',  dur: '1n', at: 39, vel: 0.5 },
+        { inst: 'french-horn', note: 'D#3', dur: '1n', at: 47, vel: 0.6 },
       ],
       fx: [
-        // Timpani heartbeat starting at phase 3
-        { inst: 'timpani', note: 'C2', dur: '4n', at: 12,    vel: 0.6 },
-        { inst: 'timpani', note: 'C2', dur: '4n', at: 13.5,  vel: 0.65 },
-        { inst: 'timpani', note: 'C2', dur: '4n', at: 15,    vel: 0.7 },
-        { inst: 'timpani', note: 'C2', dur: '4n', at: 16.5,  vel: 0.75 },
-        { inst: 'timpani', note: 'F2', dur: '4n', at: 18,    vel: 0.85 },
-        { inst: 'timpani', note: 'F2', dur: '4n', at: 19.2,  vel: 0.9 },
-        { inst: 'timpani', note: 'F2', dur: '4n', at: 20.4,  vel: 0.95 },
-        { inst: 'timpani', note: 'C2', dur: '2n', at: 22,    vel: 1.0 },
+        // Timpani heartbeat overlay — rescaled but quiet enough to leave to mxAudio.
+        { inst: 'timpani', note: 'C2', dur: '4n', at: 26,   vel: 0.6 },
+        { inst: 'timpani', note: 'C2', dur: '4n', at: 29,   vel: 0.65 },
+        { inst: 'timpani', note: 'C2', dur: '4n', at: 32,   vel: 0.7 },
+        { inst: 'timpani', note: 'C2', dur: '4n', at: 35,   vel: 0.75 },
+        { inst: 'timpani', note: 'F2', dur: '4n', at: 39,   vel: 0.85 },
+        { inst: 'timpani', note: 'F2', dur: '4n', at: 41.5, vel: 0.9 },
+        { inst: 'timpani', note: 'F2', dur: '4n', at: 44,   vel: 0.95 },
+        { inst: 'timpani', note: 'C2', dur: '2n', at: 47,   vel: 1.0 },
       ],
       nx: [
-        // Very low cello drone setting "underwater" base
-        { inst: 'cello', note: 'C2', startAt: 0, endAt: 24, vel: 0.18 },
+        { inst: 'cello', note: 'C2', startAt: 0, endAt: 54, vel: 0.18 },
       ],
     },
   },
@@ -171,44 +174,41 @@ export const SCENES: Scene[] = [
     description:
       '李慕白与玉娇龙在竹海里对峙，但镜头拍的不是打——是风。谭盾用大提琴 + 二胡的对位写"李慕白"和"玉娇龙"两个主题动机，让两件乐器在 4 度音程上互相追逐又不重合。\n\n这是"用乐器写人物关系"的范本：不是配乐"配"动作，是动机"代替"对白。',
     instruments: ['cello', 'erhu', 'guzheng', 'flute'],
+    // TIMING NOTE: rescaled ×1.85 (22 s → 40.7 s MX). Erhu entry + guzheng
+    // shimmer + flute lift should be hand-tuned after a listen pass.
     annotations: [
       { at: 0,  text: '大提琴单音起句——李慕白的"沉"。', track: 'mx' },
-      { at: 4,  text: '二胡接进来——玉娇龙。两件乐器是 4 度间距，听起来近又不重合。', track: 'mx' },
-      { at: 10, text: '古筝拨弦点缀，像竹叶。', track: 'fx' },
-      { at: 15, text: '两个主题靠到一起——长笛把他们抬上风里。', track: 'mx' },
+      { at: 7,  text: '二胡接进来——玉娇龙。两件乐器是 4 度间距，听起来近又不重合。', track: 'mx' },
+      { at: 19, text: '古筝拨弦点缀，像竹叶。', track: 'fx' },
+      { at: 28, text: '两个主题靠到一起——长笛把他们抬上风里。', track: 'mx' },
     ],
-    durationSec: 22,
+    durationSec: 41,
     mxAudio: '/scenes/crouching-tiger-bamboo/mx.mp3',
     mxAudioGain: 0.85,
     tracks: {
       mx: [
-        // Cello "Li Mubai" theme
-        { inst: 'cello', note: 'D3', dur: '2n', at: 0,  vel: 0.7 },
-        { inst: 'cello', note: 'F3', dur: '2n', at: 2,  vel: 0.7 },
-        { inst: 'cello', note: 'G3', dur: '4n.', at: 4, vel: 0.65 },
-        { inst: 'cello', note: 'F3', dur: '2n', at: 6,  vel: 0.6 },
-        // Erhu "Yu Jiaolong" theme — 4th higher
-        { inst: 'erhu', note: 'G4', dur: '2n', at: 4,  vel: 0.6 },
-        { inst: 'erhu', note: 'A4', dur: '4n.', at: 7, vel: 0.65 },
-        { inst: 'erhu', note: 'G4', dur: '4n', at: 9,  vel: 0.6 },
-        { inst: 'erhu', note: 'F4', dur: '2n', at: 11, vel: 0.55 },
-        // Convergence — both around D5/D4 octave
-        { inst: 'cello', note: 'D4', dur: '2n.', at: 15, vel: 0.7 },
-        { inst: 'erhu',  note: 'D5', dur: '2n.', at: 15, vel: 0.6 },
-        { inst: 'flute', note: 'A5', dur: '1n',  at: 17, vel: 0.45 },
+        { inst: 'cello', note: 'D3', dur: '2n',  at: 0,   vel: 0.7 },
+        { inst: 'cello', note: 'F3', dur: '2n',  at: 4,   vel: 0.7 },
+        { inst: 'cello', note: 'G3', dur: '4n.', at: 7,   vel: 0.65 },
+        { inst: 'cello', note: 'F3', dur: '2n',  at: 11,  vel: 0.6 },
+        { inst: 'erhu',  note: 'G4', dur: '2n',  at: 7,   vel: 0.6 },
+        { inst: 'erhu',  note: 'A4', dur: '4n.', at: 13,  vel: 0.65 },
+        { inst: 'erhu',  note: 'G4', dur: '4n',  at: 17,  vel: 0.6 },
+        { inst: 'erhu',  note: 'F4', dur: '2n',  at: 20,  vel: 0.55 },
+        { inst: 'cello', note: 'D4', dur: '2n.', at: 28,  vel: 0.7 },
+        { inst: 'erhu',  note: 'D5', dur: '2n.', at: 28,  vel: 0.6 },
+        { inst: 'flute', note: 'A5', dur: '1n',  at: 31,  vel: 0.45 },
       ],
       fx: [
-        // Guzheng plucks like bamboo leaves
-        { inst: 'guzheng', note: 'A4', dur: '16n', at: 10,   vel: 0.5 },
-        { inst: 'guzheng', note: 'C5', dur: '16n', at: 10.3, vel: 0.55 },
-        { inst: 'guzheng', note: 'D5', dur: '16n', at: 10.8, vel: 0.6 },
-        { inst: 'guzheng', note: 'G5', dur: '16n', at: 11.5, vel: 0.5 },
-        { inst: 'guzheng', note: 'A4', dur: '16n', at: 13,   vel: 0.45 },
-        { inst: 'guzheng', note: 'C5', dur: '16n', at: 13.4, vel: 0.5 },
+        { inst: 'guzheng', note: 'A4', dur: '16n', at: 19,   vel: 0.5 },
+        { inst: 'guzheng', note: 'C5', dur: '16n', at: 19.6, vel: 0.55 },
+        { inst: 'guzheng', note: 'D5', dur: '16n', at: 20,   vel: 0.6 },
+        { inst: 'guzheng', note: 'G5', dur: '16n', at: 21.3, vel: 0.5 },
+        { inst: 'guzheng', note: 'A4', dur: '16n', at: 24,   vel: 0.45 },
+        { inst: 'guzheng', note: 'C5', dur: '16n', at: 24.8, vel: 0.5 },
       ],
       nx: [
-        // Pad drone — bamboo wind
-        { inst: 'synth-pad', note: ['D3', 'A3'], startAt: 0, endAt: 20, vel: 0.15 },
+        { inst: 'synth-pad', note: ['D3', 'A3'], startAt: 0, endAt: 39, vel: 0.15 },
       ],
     },
   },
@@ -225,39 +225,37 @@ export const SCENES: Scene[] = [
     description:
       '希区柯克原本想这场戏不要配乐——只用淋浴水声。赫尔曼坚持加上他写的弦乐尖刀，然后这场戏就变成了影史最常被引用的剪辑 + 配乐互锁案例。\n\n音乐设计是反直觉的："撞击"用的不是低频，是高音区小提琴齐奏 + 极快的下滑。它模仿的不是刀子的物理声，是"被刺中那一瞬间的神经反应"。',
     instruments: ['violin', 'cello', 'contrabass'],
+    // TIMING NOTE: rescaled ×1.72 (18 s → 31 s MX). Stinger group anchors
+    // should be hand-tuned to where the AI stabs actually land.
     annotations: [
-      { at: 0,  text: '淋浴水声 + 完全无配乐。希区柯克最初想到这就够了。', track: 'nx' },
-      { at: 6,  text: 'STINGER 1：小提琴尖刺——观众已被攻击。', track: 'fx' },
-      { at: 6.5, text: '剪辑硬切 + 配乐落点同步，是为什么观众"觉得"看见了血。' },
-      { at: 8,  text: 'STINGER 群：六七次连续打击，模拟刀子的节奏。', track: 'fx' },
-      { at: 14, text: '下降弦乐线条——一切归于水声。', track: 'mx' },
+      { at: 0,    text: '淋浴水声 + 完全无配乐。希区柯克最初想到这就够了。', track: 'nx' },
+      { at: 10,   text: 'STINGER 1：小提琴尖刺——观众已被攻击。', track: 'fx' },
+      { at: 11,   text: '剪辑硬切 + 配乐落点同步，是为什么观众"觉得"看见了血。' },
+      { at: 14,   text: 'STINGER 群：六七次连续打击，模拟刀子的节奏。', track: 'fx' },
+      { at: 24,   text: '下降弦乐线条——一切归于水声。', track: 'mx' },
     ],
-    durationSec: 18,
+    durationSec: 31,
     mxAudio: '/scenes/psycho-shower/mx.mp3',
     mxAudioGain: 0.85,
     tracks: {
       mx: [
-        // Descending line at the end
-        { inst: 'violin',     note: 'A5', dur: '4n',  at: 14,    vel: 0.4 },
-        { inst: 'violin',     note: 'F5', dur: '4n',  at: 14.6,  vel: 0.4 },
-        { inst: 'violin',     note: 'D5', dur: '4n',  at: 15.2,  vel: 0.4 },
-        { inst: 'violin',     note: 'A4', dur: '2n',  at: 15.8,  vel: 0.35 },
+        { inst: 'violin', note: 'A5', dur: '4n', at: 24,   vel: 0.4 },
+        { inst: 'violin', note: 'F5', dur: '4n', at: 25,   vel: 0.4 },
+        { inst: 'violin', note: 'D5', dur: '4n', at: 26,   vel: 0.4 },
+        { inst: 'violin', note: 'A4', dur: '2n', at: 27,   vel: 0.35 },
       ],
       fx: [
-        // The stingers — staccato high violin + low cello underneath
-        ...buildPsychoStinger(6,    0.9, 1.0),
-        ...buildPsychoStinger(7.2,  0.7, 1.0),
-        ...buildPsychoStinger(8,    0.95, 1.0),
-        ...buildPsychoStinger(8.8,  0.85, 1.0),
-        ...buildPsychoStinger(9.6,  0.9, 1.0),
-        ...buildPsychoStinger(10.5, 0.95, 1.0),
-        ...buildPsychoStinger(11.4, 0.8, 1.0),
-        ...buildPsychoStinger(12.5, 1.0, 1.0),
+        ...buildPsychoStinger(10,   0.9,  1.0),
+        ...buildPsychoStinger(12,   0.7,  1.0),
+        ...buildPsychoStinger(14,   0.95, 1.0),
+        ...buildPsychoStinger(15,   0.85, 1.0),
+        ...buildPsychoStinger(17,   0.9,  1.0),
+        ...buildPsychoStinger(18,   0.95, 1.0),
+        ...buildPsychoStinger(20,   0.8,  1.0),
+        ...buildPsychoStinger(22,   1.0,  1.0),
       ],
       nx: [
-        // White noise approximation of shower — use contrabass at very high noise content
-        // (We don't have a true noise track yet; use very low cello as placeholder bed.)
-        { inst: 'cello', note: 'C2', startAt: 0, endAt: 18, vel: 0.1 },
+        { inst: 'cello', note: 'C2', startAt: 0, endAt: 31, vel: 0.1 },
       ],
     },
   },
@@ -274,41 +272,40 @@ export const SCENES: Scene[] = [
     description:
       'Cooper 把女儿留在地球，开车开向发射台。季默给这段戏的配置是：管风琴持续一个音（pedal tone）不动，上面叠弦乐和声慢慢移动。\n\n持续音 = 引力。无论 Cooper 走多远，那个音都还在响——这就是"父女之间的引力"的物理对应物。',
     instruments: ['pipe-organ', 'cello', 'violin', 'french-horn'],
+    // TIMING NOTE: rescaled ×2.82 (26 s → 73 s MX). Pedal-on-C is steady
+    // so most slippage is on the cello-harmony / violin-rise / horn entry
+    // — listen + hand-tune.
     annotations: [
-      { at: 0,  text: '管风琴 C pedal 进入——它从此 24 秒不动。', track: 'mx' },
-      { at: 4,  text: '大提琴在 pedal 上方移动和声——但 pedal 一直在。', track: 'mx' },
-      { at: 12, text: '小提琴爬升进入——情绪外显，pedal 仍然不动。', track: 'mx' },
-      { at: 18, text: '圆号长音叠加，全乐团围着那个 C 共振。', track: 'mx' },
+      { at: 0,  text: '管风琴 C pedal 进入——它从此 70 秒不动。', track: 'mx' },
+      { at: 11, text: '大提琴在 pedal 上方移动和声——但 pedal 一直在。', track: 'mx' },
+      { at: 34, text: '小提琴爬升进入——情绪外显，pedal 仍然不动。', track: 'mx' },
+      { at: 51, text: '圆号长音叠加，全乐团围着那个 C 共振。', track: 'mx' },
     ],
-    durationSec: 26,
+    durationSec: 73,
     mxAudio: '/scenes/interstellar-cooper-leaves/mx.mp3',
     mxAudioGain: 0.8,
     tracks: {
       mx: [
-        // Pedal tone — organ holds C3 for entire scene
         { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 0,  vel: 0.5 },
-        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 4,  vel: 0.5 },
-        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 8,  vel: 0.55 },
-        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 12, vel: 0.6 },
-        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 16, vel: 0.65 },
-        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 20, vel: 0.6 },
-        // Cello harmony moving above pedal
-        { inst: 'cello', note: 'E3', dur: '1n', at: 4,  vel: 0.55 },
-        { inst: 'cello', note: 'G3', dur: '1n', at: 8,  vel: 0.6 },
-        { inst: 'cello', note: 'F3', dur: '1n', at: 12, vel: 0.6 },
-        { inst: 'cello', note: 'A3', dur: '1n', at: 16, vel: 0.65 },
-        { inst: 'cello', note: 'G3', dur: '1n', at: 20, vel: 0.6 },
-        // Violin ascending
-        { inst: 'violin', note: 'C5', dur: '2n.', at: 12, vel: 0.4 },
-        { inst: 'violin', note: 'E5', dur: '2n.', at: 14, vel: 0.45 },
-        { inst: 'violin', note: 'G5', dur: '1n',  at: 17, vel: 0.5 },
-        // French horn join
-        { inst: 'french-horn', note: 'C4', dur: '1n', at: 18, vel: 0.55 },
-        { inst: 'french-horn', note: 'E4', dur: '1n', at: 22, vel: 0.6 },
+        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 11, vel: 0.5 },
+        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 23, vel: 0.55 },
+        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 34, vel: 0.6 },
+        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 45, vel: 0.65 },
+        { inst: 'pipe-organ', note: 'C3', dur: '1n', at: 57, vel: 0.6 },
+        { inst: 'cello', note: 'E3', dur: '1n', at: 11, vel: 0.55 },
+        { inst: 'cello', note: 'G3', dur: '1n', at: 23, vel: 0.6 },
+        { inst: 'cello', note: 'F3', dur: '1n', at: 34, vel: 0.6 },
+        { inst: 'cello', note: 'A3', dur: '1n', at: 45, vel: 0.65 },
+        { inst: 'cello', note: 'G3', dur: '1n', at: 57, vel: 0.6 },
+        { inst: 'violin', note: 'C5', dur: '2n.', at: 34, vel: 0.4 },
+        { inst: 'violin', note: 'E5', dur: '2n.', at: 40, vel: 0.45 },
+        { inst: 'violin', note: 'G5', dur: '1n',  at: 48, vel: 0.5 },
+        { inst: 'french-horn', note: 'C4', dur: '1n', at: 51, vel: 0.55 },
+        { inst: 'french-horn', note: 'E4', dur: '1n', at: 62, vel: 0.6 },
       ],
       fx: [],
       nx: [
-        { inst: 'synth-pad', note: ['C3', 'G3'], startAt: 0, endAt: 24, vel: 0.18 },
+        { inst: 'synth-pad', note: ['C3', 'G3'], startAt: 0, endAt: 71, vel: 0.18 },
       ],
     },
   },
@@ -325,34 +322,33 @@ export const SCENES: Scene[] = [
     description:
       '罗塔写的西西里主题是慢板进行曲——稳定的低音步伐 + 小号独白 + 弦乐铺底。配置极简，但每一个音都不可替代。\n\n葬礼场景的速度被音乐"定死"——演员的步伐、镜头的横摇、群众的呼吸都跟着这个节拍走。这是配乐控制场景物理时间的范本。',
     instruments: ['trumpet', 'cello', 'contrabass', 'french-horn'],
+    // TIMING NOTE: rescaled ×1.47 (24 s → 35 s MX). Trumpet entry + horn
+    // response are the two anchors to fine-tune by ear.
     annotations: [
       { at: 0,  text: '低音提琴 + 大提琴的稳定步伐——葬礼队伍。', track: 'mx' },
-      { at: 4,  text: '小号独白进入——西西里主题。', track: 'mx' },
-      { at: 14, text: '圆号合奏接住小号——家族 vs 个人的对位。', track: 'mx' },
+      { at: 6,  text: '小号独白进入——西西里主题。', track: 'mx' },
+      { at: 21, text: '圆号合奏接住小号——家族 vs 个人的对位。', track: 'mx' },
     ],
-    durationSec: 24,
+    durationSec: 35,
     mxAudio: '/scenes/godfather-funeral/mx.mp3',
     mxAudioGain: 0.85,
     tracks: {
       mx: [
-        // Bass walk (every 1.5s — slow march tempo)
-        ...buildSlowMarchBass(0, 22, 1.5),
-        // Trumpet melody — the Sicilian theme
-        { inst: 'trumpet', note: 'D4', dur: '4n.', at: 4,    vel: 0.6 },
-        { inst: 'trumpet', note: 'F4', dur: '4n',  at: 5.5,  vel: 0.65 },
-        { inst: 'trumpet', note: 'A4', dur: '2n',  at: 6.5,  vel: 0.7 },
-        { inst: 'trumpet', note: 'G4', dur: '4n.', at: 8.5,  vel: 0.65 },
-        { inst: 'trumpet', note: 'F4', dur: '2n',  at: 10,   vel: 0.6 },
-        { inst: 'trumpet', note: 'D4', dur: '2n.', at: 11.5, vel: 0.55 },
-        // French horn response from m.14
-        { inst: 'french-horn', note: 'A3', dur: '4n.', at: 14, vel: 0.55 },
-        { inst: 'french-horn', note: 'D4', dur: '4n',  at: 15.5, vel: 0.55 },
-        { inst: 'french-horn', note: 'F4', dur: '2n',  at: 16.5, vel: 0.6 },
-        { inst: 'french-horn', note: 'D4', dur: '1n',  at: 18.5, vel: 0.55 },
+        ...buildSlowMarchBass(0, 33, 1.5),
+        { inst: 'trumpet', note: 'D4', dur: '4n.', at: 6,    vel: 0.6 },
+        { inst: 'trumpet', note: 'F4', dur: '4n',  at: 8,    vel: 0.65 },
+        { inst: 'trumpet', note: 'A4', dur: '2n',  at: 10,   vel: 0.7 },
+        { inst: 'trumpet', note: 'G4', dur: '4n.', at: 13,   vel: 0.65 },
+        { inst: 'trumpet', note: 'F4', dur: '2n',  at: 15,   vel: 0.6 },
+        { inst: 'trumpet', note: 'D4', dur: '2n.', at: 17,   vel: 0.55 },
+        { inst: 'french-horn', note: 'A3', dur: '4n.', at: 21, vel: 0.55 },
+        { inst: 'french-horn', note: 'D4', dur: '4n',  at: 23, vel: 0.55 },
+        { inst: 'french-horn', note: 'F4', dur: '2n',  at: 24, vel: 0.6 },
+        { inst: 'french-horn', note: 'D4', dur: '1n',  at: 27, vel: 0.55 },
       ],
       fx: [],
       nx: [
-        { inst: 'cello', note: 'D2', startAt: 0, endAt: 22, vel: 0.18 },
+        { inst: 'cello', note: 'D2', startAt: 0, endAt: 33, vel: 0.18 },
       ],
     },
   },
