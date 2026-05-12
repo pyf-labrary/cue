@@ -5,6 +5,13 @@ import PlayButton from '@/components/audio/PlayButton';
 import { cdn } from '@/lib/cdn';
 import { isSurrogate } from '@/lib/synth';
 
+/**
+ * Instruments whose Tone.Sampler map uses a GM/Western surrogate but have a
+ * MiniMax-generated real solo demo at /samples/<id>-real.mp3. Adds a second
+ * "听真乐器" play button so users can A/B against the synth phrase.
+ */
+const REAL_DEMO_IDS = new Set(['erhu', 'guzheng', 'guqin', 'choir']);
+
 const FAMILY_LABEL: Record<string, string> = {
   strings: '弦乐',
   woodwind: '木管',
@@ -57,6 +64,18 @@ export default function Instrument() {
             sublabel={isSurrogate(inst.id) ? '采样代用：用近似乐器的真录音过渡' : '3–4s 代表乐句'}
             size="lg"
           />
+
+          {REAL_DEMO_IDS.has(inst.id) && (
+            <div className="mt-4">
+              <PlayButton
+                src={`${import.meta.env.BASE_URL}samples/${inst.id}-real.mp3`}
+                label="听一段真乐器"
+                sublabel="MiniMax music-1.5 真录音演奏 · 12s"
+                hue="#7FB6D0"
+                size="md"
+              />
+            </div>
+          )}
 
           <div className="mt-10 grid sm:grid-cols-2 gap-5">
             <Capsule title="它擅长" body={inst.strength} accent="#E6C36B" />
