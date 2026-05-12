@@ -5,7 +5,7 @@
  * compositionPlayer singleton, renders 5 lanes with track marks, annotations,
  * and per-lane mute/solo controls.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
 import {
   sceneToComposition,
@@ -15,6 +15,7 @@ import {
 } from '@/lib/composition';
 import { TRACK_META, type Scene, type TrackId, type Annotation } from '@/data/scenes';
 import SpectrumStrip from '@/components/visual/SpectrumStrip';
+import ScrubBar from '@/components/audio/ScrubBar';
 
 const TRACK_ORDER: TrackId[] = ['mx', 'fx', 'nx', 'dx', 'vo'];
 
@@ -46,48 +47,19 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
 
   const trackMarks = useMemo(() => buildTrackMarks(scene), [scene]);
 
-  const activeAnnotations = useMemo(
-    () => scene.annotations.filter((a) => Math.abs(a.at - current) < 0.6),
-    [scene, current]
-  );
+  // "Active" = the latest annotation that has fired, held visible until the
+  // next one fires. Falls through to the first annotation only after its
+  // `at` has been reached, so we don't pre-spoil the opening line.
+  const activeAnnotation = useMemo(() => {
+    const before = scene.annotations.filter((a) => a.at <= current + 0.2);
+    if (!before.length) return null;
+    return before[before.length - 1];
+  }, [scene, current]);
 
   function laneAudible(tid: TrackId): boolean {
     if (comp.laneSolo) return comp.laneSolo === tid;
     return !comp.laneMute[tid];
   }
-
-  // Shared drag-to-seek factory. The handler grabs the bar bounding rect at
-  // mousedown and follows the cursor (including outside the element) until
-  // mouseup. Touch events get a parallel listener.
-  const scrubBarRef = useRef<HTMLDivElement | null>(null);
-  function attachScrub(rect: () => DOMRect) {
-    return (e: React.MouseEvent | React.TouchEvent) => {
-      e.preventDefault();
-      const r = rect();
-      function move(clientX: number) {
-        const pct = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-        compositionPlayer.seek(pct * dur);
-      }
-      function mm(ev: MouseEvent) { move(ev.clientX); }
-      function tm(ev: TouchEvent) { if (ev.touches[0]) move(ev.touches[0].clientX); }
-      function up() {
-        window.removeEventListener('mousemove', mm);
-        window.removeEventListener('mouseup', up);
-        window.removeEventListener('touchmove', tm);
-        window.removeEventListener('touchend', up);
-      }
-      if ('touches' in e) {
-        if (e.touches[0]) move(e.touches[0].clientX);
-        window.addEventListener('touchmove', tm);
-        window.addEventListener('touchend', up);
-      } else {
-        move(e.clientX);
-        window.addEventListener('mousemove', mm);
-        window.addEventListener('mouseup', up);
-      }
-    };
-  }
-  const onScrubMouseDown = attachScrub(() => scrubBarRef.current!.getBoundingClientRect());
 
   return (
     <div className="rounded-2xl border border-ink-700 bg-ink-800/40 overflow-hidden">
@@ -127,27 +99,18 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
         </div>
       </div>
 
-      {/* Scrub bar — drag anywhere to seek. */}
+      {/* Scrub bar — drag anywhere to seek, ticks mark annotations. */}
       <div className="px-6 pt-3 pb-1">
-        <div
-          ref={scrubBarRef}
-          onMouseDown={onScrubMouseDown}
-          onTouchStart={onScrubMouseDown}
-          className="relative h-2 rounded-full bg-ink-700/60 cursor-pointer select-none group"
-          role="slider"
-          aria-valuemin={0}
-          aria-valuemax={dur}
-          aria-valuenow={current}
-        >
-          <div
-            className="absolute top-0 bottom-0 left-0 rounded-full bg-accent/60 group-hover:bg-accent transition-colors"
-            style={{ width: `${pct}%`, transition: playing ? 'width 0.05s linear' : 'none' }}
-          />
-          <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-accent shadow ring-2 ring-ink-900 opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{ left: `${pct}%` }}
-          />
-        </div>
+        <ScrubBar
+          durationSec={dur}
+          currentSec={current}
+          playing={playing}
+          ticks={scene.annotations.map((a) => ({
+            at: a.at,
+            color: a.track ? TRACK_META[a.track].color : '#E6C36B',
+            title: a.text,
+          }))}
+        />
       </div>
 
       <div className="px-6 py-5 space-y-2">
@@ -232,35 +195,11 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
 
       <div className="border-t border-ink-700/60 px-6 py-4 min-h-[60px] bg-ink-900/40">
         <div className="h-eyebrow mb-2 text-ink-400">导演笔记</div>
-        {activeAnnotations.length === 0 ? (
+        {!activeAnnotation ? (
           <div className="text-sm text-ink-500 italic">···</div>
         ) : (
-          activeAnnotations.map((a, i) => (
-            <AnnotationRow key={`${a.at}-${i}`} annotation={a} />
-          ))
+          <AnnotationRow annotation={activeAnnotation} />
         )}
-      </div>
-
-      <div className="border-t border-ink-700/60 px-6 py-3 bg-ink-800/60">
-        <div className="relative h-1.5 bg-ink-700/40 rounded">
-          {scene.annotations.map((a, i) => (
-            <button
-              key={i}
-              type="button"
-              className="absolute -top-1 w-2.5 h-3.5 rounded-sm hover:scale-125 transition"
-              style={{
-                left: `calc(${(a.at / dur) * 100}% - 5px)`,
-                background: a.track ? TRACK_META[a.track].color : '#E6C36B',
-              }}
-              title={a.text}
-              onClick={() => compositionPlayer.seek(a.at)}
-            />
-          ))}
-          <div
-            className="absolute -top-1 w-px h-3.5 bg-ink-100"
-            style={{ left: `${pct}%` }}
-          />
-        </div>
       </div>
     </div>
   );

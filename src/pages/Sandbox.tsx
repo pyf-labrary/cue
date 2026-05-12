@@ -26,6 +26,7 @@ import LoopPalette from '@/components/sandbox/LoopPalette';
 import ShareControls from '@/components/sandbox/ShareControls';
 import VideoPanel, { type VideoPanelHandle } from '@/components/sandbox/VideoPanel';
 import ExportControls from '@/components/sandbox/ExportControls';
+import ScrubBar from '@/components/audio/ScrubBar';
 import SpectrumStrip from '@/components/visual/SpectrumStrip';
 import { FrequencyBars } from '@/components/visual/Decorations';
 
@@ -194,7 +195,14 @@ export default function Sandbox() {
           </div>
         </div>
 
-        <div className="-mt-2 mb-2 opacity-70">
+        <div className="-mt-2 mb-3">
+          <ScrubBar
+            durationSec={composition.durationSec}
+            currentSec={state.currentSec}
+            playing={playing}
+          />
+        </div>
+        <div className="mb-2 opacity-70">
           <SpectrumStrip height={22} />
         </div>
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-[11px] text-ink-500">

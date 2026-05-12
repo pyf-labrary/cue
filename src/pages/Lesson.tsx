@@ -26,6 +26,7 @@ import {
 import TrackEditor from '@/components/sandbox/TrackEditor';
 import LoopPalette from '@/components/sandbox/LoopPalette';
 import ShareControls from '@/components/sandbox/ShareControls';
+import ScrubBar from '@/components/audio/ScrubBar';
 import SpectrumStrip from '@/components/visual/SpectrumStrip';
 import type { Loop } from '@/data/loops';
 
@@ -567,38 +568,45 @@ function Transport({
   comp: Composition;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-ink-700 bg-ink-800/40 px-5 py-3">
-      <button
-        type="button"
-        onClick={() => (playing ? compositionPlayer.pause() : compositionPlayer.play())}
-        disabled={state.status === 'loading'}
-        className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-accent text-ink-900 hover:scale-105 transition disabled:opacity-30"
-        title={playing ? '暂停' : '播放'}
-      >
-        {playing ? (
-          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
-            <rect x="2" y="2" width="3" height="8" fill="currentColor" />
-            <rect x="7" y="2" width="3" height="8" fill="currentColor" />
-          </svg>
-        ) : (
-          <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
-            <path d="M3 2 L12 7 L3 12 Z" fill="currentColor" />
-          </svg>
-        )}
-      </button>
-      <button
-        type="button"
-        onClick={() => compositionPlayer.stop()}
-        className="text-xs text-ink-400 hover:text-ink-200 transition px-3 py-1 rounded-full border border-ink-700"
-      >
-        回起点
-      </button>
-      <div className="flex-1 mx-3 opacity-70 max-w-[260px] hidden sm:block">
-        <SpectrumStrip height={20} />
+    <div className="rounded-2xl border border-ink-700 bg-ink-800/40 px-5 py-3 space-y-2">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => (playing ? compositionPlayer.pause() : compositionPlayer.play())}
+          disabled={state.status === 'loading'}
+          className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-accent text-ink-900 hover:scale-105 transition disabled:opacity-30"
+          title={playing ? '暂停' : '播放'}
+        >
+          {playing ? (
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
+              <rect x="2" y="2" width="3" height="8" fill="currentColor" />
+              <rect x="7" y="2" width="3" height="8" fill="currentColor" />
+            </svg>
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 14 14" aria-hidden>
+              <path d="M3 2 L12 7 L3 12 Z" fill="currentColor" />
+            </svg>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => compositionPlayer.stop()}
+          className="text-xs text-ink-400 hover:text-ink-200 transition px-3 py-1 rounded-full border border-ink-700"
+        >
+          回起点
+        </button>
+        <div className="flex-1 mx-3 opacity-70 max-w-[200px] hidden sm:block">
+          <SpectrumStrip height={20} />
+        </div>
+        <div className="ml-auto font-mono text-sm text-ink-300 tabular-nums">
+          {fmt(state.currentSec)} <span className="text-ink-500">/</span> {fmt(comp.durationSec)}
+        </div>
       </div>
-      <div className="ml-auto font-mono text-sm text-ink-300 tabular-nums">
-        {fmt(state.currentSec)} <span className="text-ink-500">/</span> {fmt(comp.durationSec)}
-      </div>
+      <ScrubBar
+        durationSec={comp.durationSec}
+        currentSec={state.currentSec}
+        playing={playing}
+      />
     </div>
   );
 }
