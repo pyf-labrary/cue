@@ -4,7 +4,7 @@
  * Composition state lives here; every edit pushes a patch into
  * compositionPlayer.patchComposition() so playback follows the UI live.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   emptyComposition,
   makeNoteClip,
@@ -14,13 +14,36 @@ import {
 } from '@/lib/composition';
 import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
 import { useKeyboardShortcuts } from '@/lib/useKeyboardShortcuts';
+import {
+  loadFromStorage,
+  saveToStorage,
+  readShareFromHash,
+  stripShareFromHash,
+} from '@/lib/compositionShare';
 import type { Loop } from '@/data/loops';
 import TrackEditor from '@/components/sandbox/TrackEditor';
 import LoopPalette from '@/components/sandbox/LoopPalette';
+import ShareControls from '@/components/sandbox/ShareControls';
+import VideoPanel, { type VideoPanelHandle } from '@/components/sandbox/VideoPanel';
+import ExportControls from '@/components/sandbox/ExportControls';
+import SpectrumStrip from '@/components/visual/SpectrumStrip';
 import { FrequencyBars } from '@/components/visual/Decorations';
 
+const STORAGE_KEY = 'sandbox';
+
 export default function Sandbox() {
-  const [composition, setComposition] = useState<Composition>(() => emptyComposition(24));
+  const [composition, setComposition] = useState<Composition>(() => {
+    // Hydration order: URL share param → localStorage → empty default.
+    const shared = readShareFromHash();
+    if (shared) {
+      // Strip ?s= from URL once absorbed so the next manual edit doesn't
+      // overlap with stale share state in the address bar.
+      stripShareFromHash();
+      return shared;
+    }
+    const stored = loadFromStorage(STORAGE_KEY);
+    return stored ?? emptyComposition(24);
+  });
   const state = useCompositionPlayer();
 
   // Push composition into the engine. setComposition triggers a warm; we only
@@ -36,6 +59,7 @@ export default function Sandbox() {
   useEffect(() => {
     if (!warmed) return;
     compositionPlayer.patchComposition(composition);
+    saveToStorage(STORAGE_KEY, composition);
   }, [composition, warmed]);
 
   const playing = state.status === 'playing';
@@ -81,6 +105,8 @@ export default function Sandbox() {
   }
 
   useKeyboardShortcuts({ composition, onCompositionChange: setComposition });
+
+  const videoRef = useRef<VideoPanelHandle | null>(null);
 
   return (
     <div className="px-6 lg:px-10 py-10">
@@ -168,20 +194,41 @@ export default function Sandbox() {
           </div>
         </div>
 
-        {/* Main layout: palette + editor */}
+        <div className="-mt-2 mb-2 opacity-70">
+          <SpectrumStrip height={22} />
+        </div>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 text-[11px] text-ink-500">
+          <span>编辑自动保存到本地；分享按钮把当前 composition 编码进 URL，对方打开就能听到。</span>
+          <ShareControls
+            composition={composition}
+            storageKey={STORAGE_KEY}
+            onReset={() => setComposition(emptyComposition(24))}
+          />
+        </div>
+
+        {/* Main layout: palette + editor (+ video preview on the right of the editor on wide screens) */}
         <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
           <LoopPalette onPick={addLoop} />
           <div>
-            <TrackEditor
-              composition={composition}
-              currentSec={state.currentSec}
-              onChangeComposition={setComposition}
-              onSeek={(sec) => compositionPlayer.seek(sec)}
-              onAddClipAt={(_lane, _sec) => {
-                // For now: clicking empty lane just seeks the playhead via Timeline.
-                // Future: open an inline picker filtered to this lane.
-              }}
-            />
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4 mb-4">
+              <TrackEditor
+                composition={composition}
+                currentSec={state.currentSec}
+                onChangeComposition={setComposition}
+                onSeek={(sec) => compositionPlayer.seek(sec)}
+                onAddClipAt={(_lane, _sec) => {
+                  // Future: open an inline picker filtered to this lane.
+                }}
+              />
+              <div className="space-y-3">
+                <VideoPanel ref={videoRef} durationSec={composition.durationSec} />
+                <ExportControls
+                  durationSec={composition.durationSec}
+                  getVideoEl={() => videoRef.current?.el ?? null}
+                  slug="sandbox"
+                />
+              </div>
+            </div>
             {isEmpty && (
               <div className="mt-6 flex flex-col items-center gap-3 text-[12px] text-ink-500 italic">
                 <div className="max-w-[360px] opacity-50">

@@ -17,8 +17,16 @@ import {
 } from '@/lib/composition';
 import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
 import { useTransportShortcuts, useLaneShortcuts } from '@/lib/useKeyboardShortcuts';
+import {
+  loadFromStorage,
+  saveToStorage,
+  readShareFromHash,
+  stripShareFromHash,
+} from '@/lib/compositionShare';
 import TrackEditor from '@/components/sandbox/TrackEditor';
 import LoopPalette from '@/components/sandbox/LoopPalette';
+import ShareControls from '@/components/sandbox/ShareControls';
+import SpectrumStrip from '@/components/visual/SpectrumStrip';
 import type { Loop } from '@/data/loops';
 
 export default function LessonPage() {
@@ -469,19 +477,32 @@ function HitPointBeat({ body, composition, hits }: { body: string; composition: 
 /* -------------------------------------------------------------------------- */
 
 function SandboxBeat({ body, starter }: { body: string; starter: Composition }) {
-  const [comp, setComp] = useState<Composition>(starter);
+  const storageKey = 'lesson:l5';
+  const [comp, setComp] = useState<Composition>(() => {
+    const shared = readShareFromHash();
+    if (shared) {
+      stripShareFromHash();
+      return shared;
+    }
+    return loadFromStorage(storageKey) ?? starter;
+  });
   const state = useCompositionPlayer();
   const playing = state.status === 'playing';
   useLaneShortcuts({ composition: comp, onCompositionChange: setComp });
 
+  // Initial warm — only on first mount or when the starter identity changes
+  // (lesson switch). We don't want to clobber the user's edits.
+  const [warmed, setWarmed] = useState(false);
   useEffect(() => {
-    void compositionPlayer.setComposition(starter);
-    setComp(starter);
+    void compositionPlayer.setComposition(comp).then(() => setWarmed(true));
     return () => compositionPlayer.dispose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [starter]);
   useEffect(() => {
+    if (!warmed) return;
     compositionPlayer.patchComposition(comp);
-  }, [comp]);
+    saveToStorage(storageKey, comp);
+  }, [comp, warmed]);
 
   function addLoop(loop: Loop) {
     const startSec = Math.min(state.currentSec, Math.max(0, comp.durationSec - loop.durSec));
@@ -510,6 +531,15 @@ function SandboxBeat({ body, starter }: { body: string; starter: Composition }) 
     <div className="space-y-4">
       <p className="text-ink-200 leading-relaxed whitespace-pre-line">{body}</p>
       <Transport playing={playing} state={state} comp={comp} />
+      <div className="flex flex-wrap items-center justify-between gap-3 text-[11px] text-ink-500 -mt-1">
+        <span>你的编辑会自动保存；分享按钮把它编码成链接，对方打开就能听到。</span>
+        <ShareControls
+          composition={comp}
+          storageKey={storageKey}
+          compact
+          onReset={() => setComp(starter)}
+        />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-4">
         <LoopPalette onPick={addLoop} />
         <TrackEditor
@@ -563,6 +593,9 @@ function Transport({
       >
         回起点
       </button>
+      <div className="flex-1 mx-3 opacity-70 max-w-[260px] hidden sm:block">
+        <SpectrumStrip height={20} />
+      </div>
       <div className="ml-auto font-mono text-sm text-ink-300 tabular-nums">
         {fmt(state.currentSec)} <span className="text-ink-500">/</span> {fmt(comp.durationSec)}
       </div>

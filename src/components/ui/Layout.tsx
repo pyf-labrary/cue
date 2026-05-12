@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { audioEngine } from '@/lib/audioEngine';
 import { SoundWave } from '@/components/visual/Decorations';
+import ShortcutsHelp from '@/components/ui/ShortcutsHelp';
 
 const NAV = [
   { to: '/', label: '情绪光谱', en: 'Spectrum' },
@@ -110,6 +111,8 @@ export default function Layout() {
       <main className="flex-1">
         <Outlet />
       </main>
+
+      <ShortcutsHelp />
 
       <footer className="border-t border-ink-700/60 mt-16">
         <div className="max-w-[1280px] mx-auto px-4 sm:px-6 pt-6 pb-2 opacity-30">

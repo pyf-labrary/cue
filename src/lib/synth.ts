@@ -43,6 +43,7 @@ interface SynthRecipe {
 let started = false;
 let fxIn: Tone.Gain | null = null;
 let activeSources: Array<Tone.ToneAudioNode> = [];
+let toneAnalyser: Tone.Analyser | null = null;
 
 export async function ensureAudioStarted(): Promise<void> {
   if (started) return;
@@ -51,12 +52,38 @@ export async function ensureAudioStarted(): Promise<void> {
   buildFxBus();
 }
 
+let toneRecordDest: MediaStreamAudioDestinationNode | null = null;
+let toneRecordGain: Tone.Gain | null = null;
+
 function buildFxBus(): void {
   if (fxIn) return;
   const limiter = new Tone.Limiter(-3).toDestination();
   const reverb = new Tone.Reverb({ decay: 3.0, preDelay: 0.025, wet: 0.28 }).connect(limiter);
   fxIn = new Tone.Gain(0.85).connect(reverb);
   fxIn.connect(limiter); // also dry to preserve transients
+  // FFT analyser tap — pre-limiter so we see raw synth dynamics.
+  toneAnalyser = new Tone.Analyser('fft', 64);
+  fxIn.connect(toneAnalyser);
+  // Parallel recording bus — taps the same signal as the limiter so a
+  // MediaRecorder elsewhere can capture audio without affecting playback.
+  const rawCtx = (Tone.context as unknown as { rawContext?: BaseAudioContext }).rawContext as AudioContext | undefined;
+  const ctxForRec = rawCtx ?? (Tone.context as unknown as AudioContext);
+  toneRecordDest = ctxForRec.createMediaStreamDestination();
+  toneRecordGain = new Tone.Gain(1);
+  fxIn.connect(toneRecordGain);
+  toneRecordGain.connect(toneRecordDest);
+}
+
+/** FFT analyser on the Tone synth bus. Null until ensureAudioStarted resolves. */
+export function getToneAnalyser(): Tone.Analyser | null {
+  if (!toneAnalyser) buildFxBus();
+  return toneAnalyser;
+}
+
+/** MediaStream carrying the Tone synth/sampler output for recording. */
+export function getToneRecordStream(): MediaStream | null {
+  if (!toneRecordDest) buildFxBus();
+  return toneRecordDest?.stream ?? null;
 }
 
 function fxNode(): Tone.Gain {
