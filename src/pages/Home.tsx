@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import EmotionWheel from '@/components/visual/EmotionWheel';
+import { FrequencyBars, SoundWave, LaneStripes } from '@/components/visual/Decorations';
 import { EMOTIONS, type Emotion } from '@/data/emotions';
 import { INSTRUMENTS, getInstrument } from '@/data/instruments';
 import { audioEngine } from '@/lib/audioEngine';
@@ -22,12 +23,22 @@ export default function Home() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative isolate">
+      {/* Background hero image, faded — sits behind content */}
+      <div className="absolute inset-x-0 top-0 h-[820px] overflow-hidden pointer-events-none z-0">
+        <img
+          src={`${import.meta.env.BASE_URL}home/hero.jpg`}
+          alt=""
+          className="w-full h-full object-cover opacity-40"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-ink-900/30 via-ink-900/70 to-ink-900" />
+      </div>
+
       {/* HERO */}
-      <section className="max-w-[1280px] mx-auto px-6 pt-16 pb-10 grid lg:grid-cols-[1.05fr_1fr] gap-16 items-center">
+      <section className="relative z-10 max-w-[1280px] mx-auto px-6 pt-16 pb-10 grid lg:grid-cols-[1.05fr_1fr] gap-16 items-center">
         <div>
           <div className="h-eyebrow mb-6">A primer for directors · 影视配乐入门</div>
-          <h1 className="h-display text-[64px] leading-[1.05] text-ink-100 mb-6">
+          <h1 className="h-display text-[40px] sm:text-[52px] md:text-[64px] leading-[1.08] text-ink-100 mb-6">
             音色是<span className="text-accent">情绪</span>的载体。<br />
             学配乐，先学<span className="text-accent">听</span>。
           </h1>
@@ -38,6 +49,9 @@ export default function Home() {
           <div className="flex gap-3">
             <Link to="/lessons" className="btn-ghost">入门五课</Link>
             <Link to="/atlas" className="btn-ghost">乐器图鉴</Link>
+          </div>
+          <div className="mt-10 max-w-[420px] opacity-70">
+            <FrequencyBars bars={28} height={50} color={active.hue} />
           </div>
         </div>
 
@@ -126,9 +140,17 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Wave divider */}
+      <div className="max-w-[1280px] mx-auto px-6 py-2">
+        <SoundWave color="rgba(230,195,107,0.35)" height={20} cycles={8} amplitude={6} />
+      </div>
+
       {/* 12-EMOTION INDEX STRIP */}
       <section className="max-w-[1280px] mx-auto px-6 py-16">
-        <div className="h-eyebrow mb-6">十二情绪索引</div>
+        <div className="flex items-end justify-between mb-6">
+          <div className="h-eyebrow">十二情绪索引</div>
+          <LaneStripes height={2} className="w-32 opacity-50" />
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {EMOTIONS.map((e) => {
             const isActive = e.id === active.id;
@@ -170,19 +192,28 @@ export default function Home() {
             进入图鉴 →
           </Link>
         </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {INSTRUMENTS.map((inst) => (
             <Link
               key={inst.id}
               to={`/atlas/${inst.id}`}
-              className="block p-6 rounded-2xl border border-ink-700 hover:border-accent transition group bg-ink-800/40"
+              className="group block rounded-xl border border-ink-700 hover:border-accent transition bg-ink-800/40 overflow-hidden"
             >
-              <div className="h-eyebrow mb-3">{inst.family.toUpperCase()}</div>
-              <div className="font-serif text-3xl text-ink-100 group-hover:text-accent transition mb-1">
-                {inst.name}
+              <div className="relative aspect-square overflow-hidden bg-ink-900">
+                <img
+                  src={`${import.meta.env.BASE_URL}atlas/${inst.id}.jpg`}
+                  alt={inst.name}
+                  loading="lazy"
+                  className="w-full h-full object-cover transition duration-700 group-hover:scale-[1.05]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink-900/80 via-transparent to-transparent" />
+                <div className="absolute bottom-2 left-3 right-3">
+                  <div className="font-serif text-lg text-ink-100 group-hover:text-accent transition leading-tight">
+                    {inst.name}
+                  </div>
+                  <div className="text-[10px] text-ink-300/80 font-mono tracking-wider">{inst.en}</div>
+                </div>
               </div>
-              <div className="text-ink-400 text-sm mb-4">{inst.en}</div>
-              <p className="text-ink-300 text-sm leading-relaxed line-clamp-3">{inst.strength}</p>
             </Link>
           ))}
         </div>

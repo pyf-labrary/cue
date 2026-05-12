@@ -442,10 +442,12 @@ const RECIPES: Record<string, SynthRecipe> = {
 
   'synth-pad': {
     build: () =>
+      // Cast through unknown — Tone's PolySynth options strictly forbid `custom`/`fat*`
+      // oscillator subtypes in its public type, but they work fine at runtime.
       new Tone.PolySynth(Tone.Synth, {
-        oscillator: { type: 'fatsawtooth', count: 3, spread: 35 } as Tone.FatOscillatorOptions,
+        oscillator: { type: 'fatsawtooth', count: 3, spread: 35 },
         envelope: { attack: 1.5, decay: 0.3, sustain: 0.9, release: 2.8 },
-      }),
+      } as unknown as Partial<Tone.SynthOptions>),
     chain: () => [
       new Tone.Filter({ type: 'lowpass', frequency: 1800, Q: 1 }),
       new Tone.Chorus({ frequency: 0.4, delayTime: 6, depth: 0.7, wet: 0.55 }).start(),

@@ -57,7 +57,7 @@ export default function Atlas() {
   return (
     <section className="max-w-[1280px] mx-auto px-6 py-16">
       <div className="h-eyebrow mb-3">乐器图鉴</div>
-      <h1 className="h-display text-5xl text-ink-100 mb-3">
+      <h1 className="h-display text-3xl sm:text-4xl md:text-5xl text-ink-100 mb-3">
         20 件常用乐器，按你能感觉到的方式分类。
       </h1>
       <p className="text-ink-300 max-w-[640px] mb-10 leading-relaxed">
@@ -111,27 +111,40 @@ export default function Atlas() {
           {filtered.map((inst) => (
             <article
               key={inst.id}
-              className="group relative p-6 rounded-2xl border border-ink-700 hover:border-ink-500 transition bg-ink-800/40"
+              className="group relative rounded-2xl border border-ink-700 hover:border-ink-500 transition bg-ink-800/40 overflow-hidden"
             >
-              <div className="flex items-center justify-between mb-3">
-                <span className="h-eyebrow">{FAMILY_LABEL[inst.family]}</span>
-                <span className="text-[11px] text-ink-400 tracking-widest uppercase">
-                  {CULTURE_LABEL[inst.culture]}
-                </span>
-              </div>
-              <Link to={`/atlas/${inst.id}`} className="block">
-                <div className="font-serif text-3xl text-ink-100 group-hover:text-accent transition mb-1">
-                  {inst.name}
+              <Link to={`/atlas/${inst.id}`} className="block relative aspect-square overflow-hidden bg-ink-900">
+                <img
+                  src={`${import.meta.env.BASE_URL}atlas/${inst.id}.jpg`}
+                  alt={inst.name}
+                  className="w-full h-full object-cover transition duration-700 group-hover:scale-[1.04]"
+                  loading="lazy"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink-900/80 via-transparent to-ink-900/30" />
+                <div className="absolute top-3 left-4 right-4 flex items-center justify-between">
+                  <span className="h-eyebrow text-ink-100/90 drop-shadow">{FAMILY_LABEL[inst.family]}</span>
+                  <span className="text-[10px] text-ink-100/70 tracking-widest uppercase drop-shadow">
+                    {CULTURE_LABEL[inst.culture]}
+                  </span>
                 </div>
-                <div className="text-ink-400 text-sm mb-4">{inst.en}</div>
-                <p className="text-ink-300 text-sm leading-relaxed line-clamp-3 mb-4">
+                <div className="absolute bottom-3 left-4 right-4">
+                  <div className="font-serif text-2xl text-ink-100 group-hover:text-accent transition leading-tight">
+                    {inst.name}
+                  </div>
+                  <div className="text-ink-300 text-xs mt-0.5">{inst.en}</div>
+                </div>
+              </Link>
+              <div className="px-5 py-4">
+                <p className="text-ink-300 text-sm leading-relaxed line-clamp-2 mb-3">
                   {inst.strength}
                 </p>
-              </Link>
-
-              <div className="flex items-center justify-between pt-3 border-t border-ink-700/60">
-                <CardPlay id={inst.id} sample={cdn(`samples/${inst.phrase}`)} />
-                <TopEmotions inst={inst} />
+                <div className="flex items-center justify-between pt-3 border-t border-ink-700/60">
+                  <CardPlay id={inst.id} sample={cdn(`samples/${inst.phrase}`)} />
+                  <TopEmotions inst={inst} />
+                </div>
               </div>
             </article>
           ))}

@@ -27,7 +27,7 @@ export default function Scenes() {
   return (
     <section className="max-w-[1280px] mx-auto px-6 py-16">
       <div className="h-eyebrow mb-3">场景拆解</div>
-      <h1 className="h-display text-5xl text-ink-100 mb-3">
+      <h1 className="h-display text-3xl sm:text-4xl md:text-5xl text-ink-100 mb-3">
         5 个不可绕开的瞬间，拆开听。
       </h1>
       <p className="text-ink-300 max-w-[640px] mb-10 leading-relaxed">
@@ -66,34 +66,51 @@ export default function Scenes() {
             <Link
               key={s.slug}
               to={`/scenes/${s.slug}`}
-              className="group block p-6 rounded-2xl border border-ink-700 hover:border-accent transition bg-ink-800/40"
+              className="group block rounded-2xl border border-ink-700 hover:border-accent transition bg-ink-800/40 overflow-hidden"
             >
-              <div className="flex items-baseline justify-between mb-3">
-                <span className="h-eyebrow">{CONCEPT_META[s.concept].label.split('（')[0]}</span>
-                <span className="text-[11px] text-ink-400">{s.year}</span>
+              {/* Cover */}
+              <div className="relative aspect-[16/9] overflow-hidden bg-ink-900">
+                <img
+                  src={`${import.meta.env.BASE_URL}scenes/${s.slug}/cover.jpg`}
+                  alt={s.title}
+                  className="w-full h-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink-900/80 via-ink-900/10 to-transparent pointer-events-none" />
+                <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
+                  <div>
+                    <div className="font-mono text-[10px] text-ink-100/80 tracking-widest">
+                      {CONCEPT_META[s.concept].label.split('（')[0].toUpperCase()}
+                    </div>
+                    <h3 className="font-serif text-2xl text-ink-100 mt-0.5 leading-tight">
+                      {s.title}
+                    </h3>
+                  </div>
+                  <span className="font-mono text-[11px] text-ink-200/80">{s.year}</span>
+                </div>
               </div>
-              <h3 className="font-serif text-3xl text-ink-100 group-hover:text-accent transition mb-1">
-                {s.title}
-              </h3>
-              <div className="text-ink-400 text-sm mb-4">
-                《{s.film}》 · {s.composer}
-              </div>
-              <p className="text-ink-300 text-sm leading-relaxed line-clamp-3 mb-4">
-                {s.description}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {s.emotions.map((eid) => {
-                  const e = EMOTIONS.find((x) => x.id === eid)!;
-                  return (
-                    <span
-                      key={eid}
-                      className="px-2 py-0.5 rounded-full text-[10px] tracking-wide"
-                      style={{ background: `${e.hue}22`, color: e.hue }}
-                    >
-                      {e.label}
-                    </span>
-                  );
-                })}
+              {/* Meta */}
+              <div className="px-5 py-4">
+                <div className="text-ink-400 text-sm mb-3">
+                  《{s.film}》 · {s.composer}
+                </div>
+                <p className="text-ink-300 text-sm leading-relaxed line-clamp-2 mb-3">
+                  {s.description}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {s.emotions.map((eid) => {
+                    const e = EMOTIONS.find((x) => x.id === eid)!;
+                    return (
+                      <span
+                        key={eid}
+                        className="px-2 py-0.5 rounded-full text-[10px] tracking-wide"
+                        style={{ background: `${e.hue}22`, color: e.hue }}
+                      >
+                        {e.label}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             </Link>
           ))}

@@ -46,7 +46,7 @@ export default function Instrument() {
             <span className="w-1 h-1 rounded-full bg-ink-500" />
             <span className="h-eyebrow">{inst.culture}</span>
           </div>
-          <h1 className="h-display text-[88px] leading-none text-ink-100 mb-2">{inst.name}</h1>
+          <h1 className="h-display text-[56px] sm:text-[72px] md:text-[88px] leading-none text-ink-100 mb-2">{inst.name}</h1>
           <div className="font-serif text-2xl text-ink-400 mb-8">{inst.en}</div>
           <p className="text-ink-200 text-lg leading-relaxed mb-8 max-w-[520px]">{inst.timbre}</p>
 
@@ -64,9 +64,20 @@ export default function Instrument() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center">
-          <EmotionRadar values={inst.emotionRadar} size={420} />
-          <div className="h-eyebrow mt-2">情绪雷达</div>
+        <div className="flex flex-col items-center gap-8">
+          <div className="relative w-full max-w-[420px] aspect-square rounded-2xl overflow-hidden border border-ink-700/60 bg-ink-900">
+            <img
+              src={`${import.meta.env.BASE_URL}atlas/${inst.id}.jpg`}
+              alt={inst.name}
+              className="w-full h-full object-cover"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+            />
+            <div className="absolute inset-0 ring-1 ring-inset ring-white/5 pointer-events-none" />
+          </div>
+          <div className="flex flex-col items-center">
+            <EmotionRadar values={inst.emotionRadar} size={340} />
+            <div className="h-eyebrow mt-2">情绪雷达</div>
+          </div>
         </div>
       </header>
 

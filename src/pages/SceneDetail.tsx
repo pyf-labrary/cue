@@ -3,10 +3,13 @@ import { getScene, CONCEPT_META } from '@/data/scenes';
 import { EMOTIONS } from '@/data/emotions';
 import { getInstrument } from '@/data/instruments';
 import MultiTrackPlayer from '@/components/audio/MultiTrackPlayer';
+import { useLegacyTransportShortcuts } from '@/lib/useKeyboardShortcuts';
+import { scenePlayer } from '@/lib/scenePlayer';
 
 export default function SceneDetail() {
   const { slug = '' } = useParams();
   const scene = getScene(slug);
+  useLegacyTransportShortcuts({ player: scenePlayer });
 
   if (!scene) {
     return (
@@ -26,18 +29,28 @@ export default function SceneDetail() {
         ← 场景拆解
       </Link>
 
+      {/* Cover banner */}
+      <div className="relative aspect-[21/9] rounded-2xl overflow-hidden mb-10 bg-ink-900 border border-ink-700/60">
+        <img
+          src={`${import.meta.env.BASE_URL}scenes/${scene.slug}/cover.jpg`}
+          alt={scene.title}
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/40 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10">
+          <div className="font-mono text-[10px] text-accent tracking-widest mb-2">
+            {concept.label.toUpperCase()}
+          </div>
+          <h1 className="h-display text-4xl md:text-6xl leading-[1.05] text-ink-100">{scene.title}</h1>
+          <div className="font-serif text-base md:text-xl text-ink-200/80 mt-2">
+            《{scene.film}》 · {scene.year} · {scene.composer}
+          </div>
+        </div>
+      </div>
+
       {/* HERO */}
       <header className="grid lg:grid-cols-[1.1fr_1fr] gap-12 items-start mb-12">
         <div>
-          <div className="flex items-center gap-3 mb-4 flex-wrap">
-            <span className="h-eyebrow">{concept.label}</span>
-            <span className="w-1 h-1 rounded-full bg-ink-500" />
-            <span className="h-eyebrow">{scene.year}</span>
-          </div>
-          <h1 className="h-display text-[64px] leading-[1.05] text-ink-100 mb-2">{scene.title}</h1>
-          <div className="font-serif text-xl text-ink-400 mb-8">
-            《{scene.film}》 · {scene.composer}
-          </div>
           {scene.description.split('\n\n').map((para, i) => (
             <p key={i} className="text-ink-200 text-[15px] leading-relaxed mb-4 max-w-[560px]">
               {para}
