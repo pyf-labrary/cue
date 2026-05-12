@@ -77,13 +77,14 @@ function buildFxBus(): void {
 
 /** FFT analyser on the Tone synth bus. Null until ensureAudioStarted resolves. */
 export function getToneAnalyser(): Tone.Analyser | null {
-  if (!toneAnalyser) buildFxBus();
+  // Don't lazy-build here — would construct audio nodes before user gesture
+  // and trip Chrome's autoplay warning. ensureAudioStarted (called from
+  // play() etc) is responsible for buildFxBus.
   return toneAnalyser;
 }
 
 /** MediaStream carrying the Tone synth/sampler output for recording. */
 export function getToneRecordStream(): MediaStream | null {
-  if (!toneRecordDest) buildFxBus();
   return toneRecordDest?.stream ?? null;
 }
 

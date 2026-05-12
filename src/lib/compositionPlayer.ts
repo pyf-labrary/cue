@@ -71,28 +71,34 @@ class CompositionPlayerImpl {
   /* ---------- public API ------------------------------------------------- */
 
   /**
-   * Replace the composition. Returns when audio buffers have been warmed
-   * (or the warm timeout elapses). Status stays 'idle' throughout — the UI
-   * shouldn't lock waiting for audio context, which can't resume until a
-   * user gesture (button click) anyway.
+   * Replace the composition. Cheap — only stores state and disposes the old
+   * Howl pool. The expensive bits (Tone.Sampler instantiation, Howl preload,
+   * FX bus construction) are deferred to the first play() call because they
+   * all touch the AudioContext, and creating audio nodes before a user
+   * gesture spams the console with autoplay warnings + can exhaust the
+   * html5 audio pool when the user navigates between scenes quickly.
    */
+  private warmedFor: Composition | null = null;
   async setComposition(comp: Composition): Promise<void> {
     const wasPlaying = this.status === 'playing';
     this.stop();
     this.disposeHowls();
     this.comp = comp;
+    this.warmedFor = null;
     this.currentSec = 0;
     this.status = 'idle';
     this.notify();
+    if (wasPlaying) this.play();
+  }
 
-    // Warm samplers + audio clips in the background. Don't gate on
-    // ensureAudioStarted — Tone.start() blocks until user gesture under
-    // autoplay policy, and Howler / fetch don't need the audio context.
+  /** Build samplers + preload Howls if not already done. Idempotent. */
+  private async warm(comp: Composition): Promise<void> {
+    if (this.warmedFor === comp) return;
     const warms: Promise<unknown>[] = [];
     const usedInsts = new Set<string>();
     for (const c of comp.clips) {
       if (c.kind === 'notes' || c.kind === 'drone') usedInsts.add(c.inst);
-      if (c.kind === 'audio') warms.push(this.preloadAudio(c));
+      if (c.kind === 'audio' && !this.howls.has(c.id)) warms.push(this.preloadAudio(c));
     }
     for (const id of usedInsts) {
       const handle = resolveInstrument(id);
@@ -101,8 +107,7 @@ class CompositionPlayerImpl {
       }
     }
     await Promise.race([Promise.all(warms), new Promise((r) => setTimeout(r, 8000))]);
-
-    if (wasPlaying) this.play();
+    this.warmedFor = comp;
   }
 
   /** Replace composition state without re-warming — for live knob/clip edits. */
@@ -130,11 +135,30 @@ class CompositionPlayerImpl {
     if (this.status === 'playing') return;
     if (!this.comp.clips.length && this.comp.durationSec <= 0) return;
 
-    // play() is reached only from a user gesture (button click), so it is
-    // the right place to start the AudioContext. Tone.start() resolves
-    // immediately once context.resume() succeeds.
+    // play() is reached only from a user gesture (button click). This is the
+    // first moment we're allowed to construct audio nodes without tripping
+    // Chrome's autoplay warning. Kick the context, then warm samplers/howls,
+    // then schedule. If audio is not yet warmed we go through a 'loading'
+    // status so the UI can disable the button while buffers come up.
+    const comp = this.comp;
+    if (this.warmedFor !== comp) {
+      this.status = 'loading';
+      this.notify();
+      const session = this.session;
+      void (async () => {
+        await ensureAudioStarted();
+        await this.warm(comp);
+        // Bail if user changed mind / nav'd away while we were warming.
+        if (this.comp !== comp || session !== this.session) return;
+        this.startPlayback();
+      })();
+      return;
+    }
     void ensureAudioStarted();
+    this.startPlayback();
+  }
 
+  private startPlayback(): void {
     const fromSec = this.currentSec >= this.comp.durationSec ? 0 : this.currentSec;
     this.currentSec = fromSec;
     this.session += 1;
@@ -142,7 +166,6 @@ class CompositionPlayerImpl {
     this.startedFromSec = fromSec;
     this.status = 'playing';
     this.notify();
-
     this.schedule(fromSec, this.session);
     this.startTicker();
   }
@@ -375,7 +398,11 @@ class CompositionPlayerImpl {
       const url = `${import.meta.env.BASE_URL}${clip.url.replace(/^\//, '')}`;
       const howl = new Howl({
         src: [url],
-        html5: true,
+        // html5:false → Web Audio mode (AudioBuffer, decoded once). Scene MX
+        // files are <300 KB so the memory hit is negligible, and we avoid
+        // the html5 audio-element pool that gets exhausted when the user
+        // bounces between scenes.
+        html5: false,
         preload: true,
         volume: this.effectiveAudioGain(clip),
         onload: () => {

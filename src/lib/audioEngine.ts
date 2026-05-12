@@ -1,5 +1,9 @@
-import { Howl } from 'howler';
+import { Howl, Howler } from 'howler';
 import { hasRecipe, playSynthPhrase, ensureAudioStarted, stopAllSynth } from './synth';
+
+// Default html5 pool is 10. Atlas users skim many instrument previews; bump
+// it so we don't exhaust slots before the GC collects stale Howls.
+(Howler as unknown as { html5PoolSize: number }).html5PoolSize = 32;
 
 /**
  * Global audio engine — one knob to control all sound.
