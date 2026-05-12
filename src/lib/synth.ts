@@ -61,8 +61,9 @@ function buildFxBus(): void {
   const reverb = new Tone.Reverb({ decay: 3.0, preDelay: 0.025, wet: 0.28 }).connect(limiter);
   fxIn = new Tone.Gain(0.85).connect(reverb);
   fxIn.connect(limiter); // also dry to preserve transients
-  // FFT analyser tap — pre-limiter so we see raw synth dynamics.
-  toneAnalyser = new Tone.Analyser('fft', 64);
+  // FFT analyser tap — pre-limiter so we see raw synth dynamics. 128 bins
+  // → ~172 Hz/bin at 44.1k, enough low-frequency resolution for bass content.
+  toneAnalyser = new Tone.Analyser('fft', 128);
   fxIn.connect(toneAnalyser);
   // Parallel recording bus — taps the same signal as the limiter so a
   // MediaRecorder elsewhere can capture audio without affecting playback.

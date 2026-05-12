@@ -5,7 +5,7 @@
  * compositionPlayer singleton, renders 5 lanes with track marks, annotations,
  * and per-lane mute/solo controls.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
 import {
   sceneToComposition,
@@ -56,6 +56,39 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
     return !comp.laneMute[tid];
   }
 
+  // Shared drag-to-seek factory. The handler grabs the bar bounding rect at
+  // mousedown and follows the cursor (including outside the element) until
+  // mouseup. Touch events get a parallel listener.
+  const scrubBarRef = useRef<HTMLDivElement | null>(null);
+  function attachScrub(rect: () => DOMRect) {
+    return (e: React.MouseEvent | React.TouchEvent) => {
+      e.preventDefault();
+      const r = rect();
+      function move(clientX: number) {
+        const pct = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+        compositionPlayer.seek(pct * dur);
+      }
+      function mm(ev: MouseEvent) { move(ev.clientX); }
+      function tm(ev: TouchEvent) { if (ev.touches[0]) move(ev.touches[0].clientX); }
+      function up() {
+        window.removeEventListener('mousemove', mm);
+        window.removeEventListener('mouseup', up);
+        window.removeEventListener('touchmove', tm);
+        window.removeEventListener('touchend', up);
+      }
+      if ('touches' in e) {
+        if (e.touches[0]) move(e.touches[0].clientX);
+        window.addEventListener('touchmove', tm);
+        window.addEventListener('touchend', up);
+      } else {
+        move(e.clientX);
+        window.addEventListener('mousemove', mm);
+        window.addEventListener('mouseup', up);
+      }
+    };
+  }
+  const onScrubMouseDown = attachScrub(() => scrubBarRef.current!.getBoundingClientRect());
+
   return (
     <div className="rounded-2xl border border-ink-700 bg-ink-800/40 overflow-hidden">
       <div className="flex items-center gap-4 px-6 py-4 border-b border-ink-700/60">
@@ -91,6 +124,29 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
         </div>
         <div className="ml-auto font-mono text-sm text-ink-300 tabular-nums">
           {fmt(current)} <span className="text-ink-500">/</span> {fmt(dur)}
+        </div>
+      </div>
+
+      {/* Scrub bar — drag anywhere to seek. */}
+      <div className="px-6 pt-3 pb-1">
+        <div
+          ref={scrubBarRef}
+          onMouseDown={onScrubMouseDown}
+          onTouchStart={onScrubMouseDown}
+          className="relative h-2 rounded-full bg-ink-700/60 cursor-pointer select-none group"
+          role="slider"
+          aria-valuemin={0}
+          aria-valuemax={dur}
+          aria-valuenow={current}
+        >
+          <div
+            className="absolute top-0 bottom-0 left-0 rounded-full bg-accent/60 group-hover:bg-accent transition-colors"
+            style={{ width: `${pct}%`, transition: playing ? 'width 0.05s linear' : 'none' }}
+          />
+          <div
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-accent shadow ring-2 ring-ink-900 opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ left: `${pct}%` }}
+          />
         </div>
       </div>
 

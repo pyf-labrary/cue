@@ -11,6 +11,22 @@ import * as Tone from 'tone';
 import { getToneAnalyser } from './synth';
 
 const NUM_BARS = 32;
+const SRC_BINS = 128; // Tone.Analyser('fft', 128) + Howler analyser fftSize 256
+const MIN_BIN = 1;    // skip DC
+const MAX_BIN = 90;   // ≈15.5kHz at 44.1k — past here is mostly silence for music
+
+// Precompute log-spaced bin ranges so bar k spans freq band [lo, hi).
+const BAR_RANGES: Array<[number, number]> = (() => {
+  const out: Array<[number, number]> = [];
+  const logRange = Math.log(MAX_BIN / MIN_BIN);
+  for (let k = 0; k < NUM_BARS; k++) {
+    const lo = Math.floor(MIN_BIN * Math.exp((k / NUM_BARS) * logRange));
+    let hi = Math.floor(MIN_BIN * Math.exp(((k + 1) / NUM_BARS) * logRange));
+    if (hi <= lo) hi = lo + 1;
+    out.push([lo, Math.min(hi, SRC_BINS)]);
+  }
+  return out;
+})();
 
 let howlAnalyser: AnalyserNode | null = null;
 let attachedHowl = false;
@@ -21,15 +37,15 @@ function attachHowlerAnalyser(): void {
   const master = (Howler as unknown as { masterGain?: GainNode }).masterGain;
   if (!ctx || !master) return;
   const a = ctx.createAnalyser();
-  a.fftSize = 128;
+  a.fftSize = SRC_BINS * 2; // matches Tone bin count
   a.smoothingTimeConstant = 0.75;
   master.connect(a);
   howlAnalyser = a;
   attachedHowl = true;
 }
 
-const toneFreqBuf = new Float32Array(64);
-const howlFreqBuf = new Float32Array(64);
+const toneFreqBuf = new Float32Array(SRC_BINS);
+const howlFreqBuf = new Float32Array(SRC_BINS);
 
 /**
  * Fill `out` (length NUM_BARS) with normalised 0..1 magnitudes. Returns true
@@ -55,12 +71,11 @@ export function readSpectrum(out: Float32Array): boolean {
     howlFreqBuf.fill(-100);
   }
 
-  // Down-sample each 64-bin buffer to NUM_BARS, max-merge across the two engines.
-  const stride = 64 / NUM_BARS; // 2
+  // Log-spaced down-sample across both engines (max-merge).
   for (let i = 0; i < NUM_BARS; i++) {
+    const [lo, hi] = BAR_RANGES[i];
     let peak = -120;
-    for (let j = 0; j < stride; j++) {
-      const idx = i * stride + j;
+    for (let idx = lo; idx < hi; idx++) {
       const t = toneFreqBuf[idx] ?? -120;
       const h = howlFreqBuf[idx] ?? -120;
       if (t > peak) peak = t;
