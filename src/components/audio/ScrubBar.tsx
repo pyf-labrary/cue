@@ -1,9 +1,13 @@
 /**
  * Generic draggable transport bar. Click anywhere to seek; press-and-drag
- * to scrub continuously. Uses Pointer Events so the same code path drives
- * mouse, touch, and pen without surprises around passive listeners.
+ * to scrub. To avoid retriggering Howl/Tone on every pointermove (which
+ * stacks overlapping audio and pegs the main thread), we pause playback at
+ * pointer-down, follow the cursor visually only, and commit a single seek
+ * at pointer-up (resuming if we paused).
+ *
+ * Uses Pointer Events so the same code path covers mouse / touch / pen.
  */
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { compositionPlayer } from '@/lib/compositionPlayer';
 
 interface Props {
@@ -18,14 +22,15 @@ interface Props {
 
 export default function ScrubBar({ durationSec, currentSec, playing, ticks, className }: Props) {
   const barRef = useRef<HTMLDivElement | null>(null);
-  const pct = durationSec > 0 ? Math.max(0, Math.min(100, (currentSec / durationSec) * 100)) : 0;
+  const [dragSec, setDragSec] = useState<number | null>(null);
+  const shownSec = dragSec ?? currentSec;
+  const pct = durationSec > 0 ? Math.max(0, Math.min(100, (shownSec / durationSec) * 100)) : 0;
 
-  function seekFromClientX(clientX: number) {
-    const el = barRef.current;
-    if (!el) return;
+  function secFromClientX(clientX: number): number {
+    const el = barRef.current!;
     const rect = el.getBoundingClientRect();
     const p = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    compositionPlayer.seek(p * durationSec);
+    return p * durationSec;
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -33,15 +38,27 @@ export default function ScrubBar({ durationSec, currentSec, playing, ticks, clas
     const el = barRef.current;
     if (!el) return;
     el.setPointerCapture(e.pointerId);
-    seekFromClientX(e.clientX);
+
+    // Pause during drag — re-seeking on every move stacks audio + thrashes.
+    const wasPlaying = compositionPlayer.getState().status === 'playing';
+    if (wasPlaying) compositionPlayer.pause();
+
+    let lastSec = secFromClientX(e.clientX);
+    setDragSec(lastSec);
+
     function move(ev: PointerEvent) {
-      seekFromClientX(ev.clientX);
+      lastSec = secFromClientX(ev.clientX);
+      setDragSec(lastSec);
     }
     function up(ev: PointerEvent) {
       try { el!.releasePointerCapture(ev.pointerId); } catch { /* ignore */ }
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
+      // Commit the final position once, then resume if we were playing.
+      compositionPlayer.seek(lastSec);
+      if (wasPlaying) compositionPlayer.play();
+      setDragSec(null);
     }
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
