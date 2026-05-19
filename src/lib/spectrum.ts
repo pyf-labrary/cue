@@ -7,7 +7,6 @@
  * 32 bins is enough for an educational meter.
  */
 import { Howler } from 'howler';
-import * as Tone from 'tone';
 import { getToneAnalyser } from './synth';
 
 const NUM_BARS = 32;
@@ -91,13 +90,11 @@ export function readSpectrum(out: Float32Array): boolean {
 export const SPECTRUM_BARS = NUM_BARS;
 
 /**
- * Prime the audio bus so the Tone analyser exists. Safe to call without a
- * user gesture — buildFxBus() only constructs the node graph; Tone.start()
- * is what would fail.
+ * Prime the spectrum sources. Tone analyser is null until ensureAudioStarted()
+ * resolves (post user gesture) — touching getToneAnalyser() here is a no-op
+ * in that case. Howler attaches eagerly once its master gain exists.
  */
 export function primeSpectrum(): void {
-  // touch the lazy-init path
   getToneAnalyser();
   attachHowlerAnalyser();
-  void Tone;
 }

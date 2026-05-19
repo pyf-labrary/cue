@@ -25,7 +25,7 @@
  */
 
 import { Howl } from 'howler';
-import * as Tone from 'tone';
+import type * as Tone from 'tone';
 import { useEffect, useState } from 'react';
 import {
   type Clip,
@@ -38,7 +38,7 @@ import {
   isLaneAudible,
 } from './composition';
 import type { TrackId } from '@/data/scenes';
-import { ensureAudioStarted, resolveInstrument, stopAllSynth } from './synth';
+import { ensureAudioStarted, resolveInstrument, stopAllSynth, toneNow } from './synth';
 
 type Listener = (s: CompositionPlayerState) => void;
 
@@ -317,16 +317,21 @@ class CompositionPlayerImpl {
       const at = clip.startSec + n.at;
       if (at + 0.05 < fromSec) continue;
       if (at >= clip.startSec + clip.durSec) continue;
-      const delay = Math.max(0, (at - fromSec) * 1000);
+      // Humanize timing ±12ms and velocity ±8% so the sampler phrases don't
+      // feel sequencer-quantized. Percussion (membrane synths) skip vel jitter
+      // since hits already get strong transient variation.
+      const timeJitterMs = (Math.random() - 0.5) * 24;
+      const velJitter = 0.92 + Math.random() * 0.16;
+      const delay = Math.max(0, (at - fromSec) * 1000 + timeJitterMs);
       const tid = window.setTimeout(() => {
         if (session !== this.session) return;
         if (!this.shouldPlay(clip)) return;
-        const v = (n.vel ?? 0.8) * clip.vol * this.laneGain(clip.lane);
+        const v = (n.vel ?? 0.8) * clip.vol * this.laneGain(clip.lane) * velJitter;
         if (handle.kind === 'sampler') {
           if (!handle.sampler.loaded) return;
-          handle.sampler.triggerAttackRelease(n.note, n.dur, Tone.now() + 0.02, v);
+          handle.sampler.triggerAttackRelease(n.note, n.dur, toneNow() + 0.02, v);
         } else {
-          (handle.synth as Tone.PolySynth).triggerAttackRelease(n.note, n.dur, Tone.now() + 0.02, v);
+          (handle.synth as Tone.PolySynth).triggerAttackRelease(n.note, n.dur, toneNow() + 0.02, v);
         }
       }, delay);
       this.timeoutIds.push(tid);
@@ -349,10 +354,10 @@ class CompositionPlayerImpl {
       if (handle.kind === 'sampler') {
         if (!handle.sampler.loaded) return;
         for (const n of notes) {
-          handle.sampler.triggerAttackRelease(n, dur, Tone.now() + 0.02, v);
+          handle.sampler.triggerAttackRelease(n, dur, toneNow() + 0.02, v);
         }
       } else {
-        (handle.synth as Tone.PolySynth).triggerAttackRelease(notes, dur, Tone.now() + 0.02, v);
+        (handle.synth as Tone.PolySynth).triggerAttackRelease(notes, dur, toneNow() + 0.02, v);
       }
     }, delay);
     this.timeoutIds.push(tid);

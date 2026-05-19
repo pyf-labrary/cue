@@ -11,7 +11,27 @@
  * All output is scheduled on Tone.Transport so it can be hard-stopped.
  */
 
-import * as Tone from 'tone';
+/**
+ * Tone is dynamically imported on first ensureAudioStarted() (which is only
+ * called from a user-gesture-originated play()), so the `new AudioContext()`
+ * Tone v15 fires at module init is deferred past page load. This kills the
+ * last two "AudioContext was not allowed to start" warnings + lets Vite
+ * code-split Tone (~400KB) into its own chunk for faster first paint.
+ */
+import type * as Tone from 'tone';
+
+let _T: typeof import('tone') | null = null;
+
+/** Runtime Tone accessor. Safe to call only after ensureAudioStarted resolves. */
+function T(): typeof import('tone') {
+  if (!_T) throw new Error('[synth] Tone accessed before ensureAudioStarted()');
+  return _T;
+}
+
+/** Exposed for other modules (e.g. compositionPlayer) that need Tone.now(). */
+export function toneNow(): number {
+  return T().now();
+}
 
 type Note = string;
 type Beat = string;
@@ -47,7 +67,8 @@ let toneAnalyser: Tone.Analyser | null = null;
 
 export async function ensureAudioStarted(): Promise<void> {
   if (started) return;
-  await Tone.start();
+  if (!_T) _T = await import('tone');
+  await _T.start();
   started = true;
   buildFxBus();
 }
@@ -57,20 +78,21 @@ let toneRecordGain: Tone.Gain | null = null;
 
 function buildFxBus(): void {
   if (fxIn) return;
-  const limiter = new Tone.Limiter(-3).toDestination();
-  const reverb = new Tone.Reverb({ decay: 3.0, preDelay: 0.025, wet: 0.28 }).connect(limiter);
-  fxIn = new Tone.Gain(0.85).connect(reverb);
+  const t = T();
+  const limiter = new t.Limiter(-3).toDestination();
+  const reverb = new t.Reverb({ decay: 3.0, preDelay: 0.025, wet: 0.28 }).connect(limiter);
+  fxIn = new t.Gain(0.85).connect(reverb);
   fxIn.connect(limiter); // also dry to preserve transients
   // FFT analyser tap — pre-limiter so we see raw synth dynamics. 128 bins
   // → ~172 Hz/bin at 44.1k, enough low-frequency resolution for bass content.
-  toneAnalyser = new Tone.Analyser('fft', 128);
+  toneAnalyser = new t.Analyser('fft', 128);
   fxIn.connect(toneAnalyser);
   // Parallel recording bus — taps the same signal as the limiter so a
   // MediaRecorder elsewhere can capture audio without affecting playback.
-  const rawCtx = (Tone.context as unknown as { rawContext?: BaseAudioContext }).rawContext as AudioContext | undefined;
-  const ctxForRec = rawCtx ?? (Tone.context as unknown as AudioContext);
+  const rawCtx = (t.context as unknown as { rawContext?: BaseAudioContext }).rawContext as AudioContext | undefined;
+  const ctxForRec = rawCtx ?? (t.context as unknown as AudioContext);
   toneRecordDest = ctxForRec.createMediaStreamDestination();
-  toneRecordGain = new Tone.Gain(1);
+  toneRecordGain = new t.Gain(1);
   fxIn.connect(toneRecordGain);
   toneRecordGain.connect(toneRecordDest);
 }
@@ -215,14 +237,15 @@ function getSampler(id: string): { sampler: Tone.Sampler; loaded: Promise<void>;
   if (slot) return slot;
   let resolve!: () => void;
   const loaded = new Promise<void>((r) => (resolve = r));
-  const sampler = new Tone.Sampler({
+  const t = T();
+  const sampler = new t.Sampler({
     urls: def.urls,
     baseUrl: `${SAMPLE_BASE}/${def.folder}/`,
     release: def.release ?? 0.8,
     onload: () => resolve(),
     onerror: (err) => console.error(`[synth] ${id} buffer decode failed`, err),
   });
-  const gain = new Tone.Gain(def.gain ?? 0.6).connect(fxNode());
+  const gain = new t.Gain(def.gain ?? 0.6).connect(fxNode());
   sampler.connect(gain);
   slot = { sampler, loaded, gain };
   samplerCache.set(id, slot);
@@ -274,7 +297,7 @@ function getSynth(id: string): Tone.ToneAudioNode | null {
     head.connect(node);
     head = node;
   }
-  const gain = new Tone.Gain(recipe.gain ?? 0.55).connect(fxNode());
+  const gain = new (T().Gain)(recipe.gain ?? 0.55).connect(fxNode());
   head.connect(gain);
   inst = built;
   synthCache.set(id, inst);
@@ -327,7 +350,7 @@ export async function playSynthPhrase(id: string): Promise<void> {
     // Wait for ALL Tone-pending loads (more reliable than the per-Sampler
     // onload, which can fire before the AudioBuffer is fully wired up).
     await Promise.race([
-      Promise.all([slot.loaded, Tone.loaded()]),
+      Promise.all([slot.loaded, T().loaded()]),
       new Promise((res) => window.setTimeout(res, 5000)),
     ]);
     if (session !== playSession) return;
@@ -335,21 +358,26 @@ export async function playSynthPhrase(id: string): Promise<void> {
       console.warn(`[synth] sampler ${id} not loaded after 5s timeout`);
       return;
     }
-    trigger = (n, d, v) => slot.sampler.triggerAttackRelease(n, d, Tone.now() + 0.02, v);
+    trigger = (n, d, v) => slot.sampler.triggerAttackRelease(n, d, T().now() + 0.02, v);
     activeSources = [slot.sampler];
   } else {
     const synth = getSynth(id);
     if (!synth) return;
-    trigger = (n, d, v) => (synth as Tone.PolySynth).triggerAttackRelease(n, d, Tone.now() + 0.01, v);
+    trigger = (n, d, v) => (synth as Tone.PolySynth).triggerAttackRelease(n, d, T().now() + 0.01, v);
     activeSources = [synth];
   }
 
   return new Promise((resolve) => {
     for (const n of phrase.notes) {
+      // Humanize: ±12ms timing jitter + ±8% velocity so the fallback synth
+      // phrases (used when no -real.mp3 exists for an instrument yet) sound
+      // less robotic.
+      const jitterMs = (Math.random() - 0.5) * 24;
+      const velMul = 0.92 + Math.random() * 0.16;
       const tid = window.setTimeout(() => {
         if (session !== playSession) return;
-        trigger(n.note, n.dur, n.vel ?? 0.9);
-      }, Math.round(n.at * 1000));
+        trigger(n.note, n.dur, (n.vel ?? 0.9) * velMul);
+      }, Math.round(n.at * 1000 + jitterMs));
       timeoutIds.push(tid);
     }
     const endTid = window.setTimeout(() => {
@@ -439,7 +467,7 @@ const PHRASES: Record<string, SynthPhrase> = {
 const RECIPES: Record<string, SynthRecipe> = {
   timpani: {
     build: () =>
-      new Tone.MembraneSynth({
+      new (T().MembraneSynth)({
         pitchDecay: 0.12,
         octaves: 6,
         envelope: { attack: 0.001, decay: 1.2, sustain: 0, release: 1.8 },
@@ -449,7 +477,7 @@ const RECIPES: Record<string, SynthRecipe> = {
 
   taiko: {
     build: () =>
-      new Tone.MembraneSynth({
+      new (T().MembraneSynth)({
         pitchDecay: 0.05,
         octaves: 4,
         envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.5 },
@@ -458,34 +486,41 @@ const RECIPES: Record<string, SynthRecipe> = {
   },
 
   celesta: {
-    build: () =>
-      new Tone.PolySynth(Tone.FMSynth, {
+    build: () => {
+      const t = T();
+      return new t.PolySynth(t.FMSynth, {
         harmonicity: 2,
         modulationIndex: 5,
         envelope: { attack: 0.002, decay: 1.4, sustain: 0, release: 1.6 },
         modulationEnvelope: { attack: 0.002, decay: 0.6, sustain: 0, release: 0.8 },
         modulation: { type: 'sine' },
-      }),
+      });
+    },
     gain: 0.38,
   },
 
   'synth-pad': {
-    build: () =>
+    build: () => {
+      const t = T();
       // Cast through unknown — Tone's PolySynth options strictly forbid `custom`/`fat*`
       // oscillator subtypes in its public type, but they work fine at runtime.
-      new Tone.PolySynth(Tone.Synth, {
+      return new t.PolySynth(t.Synth, {
         oscillator: { type: 'fatsawtooth', count: 3, spread: 35 },
         envelope: { attack: 1.5, decay: 0.3, sustain: 0.9, release: 2.8 },
-      } as unknown as Partial<Tone.SynthOptions>),
-    chain: () => [
-      new Tone.Filter({ type: 'lowpass', frequency: 1800, Q: 1 }),
-      new Tone.Chorus({ frequency: 0.4, delayTime: 6, depth: 0.7, wet: 0.55 }).start(),
-    ],
+      } as unknown as Partial<Tone.SynthOptions>);
+    },
+    chain: () => {
+      const t = T();
+      return [
+        new t.Filter({ type: 'lowpass', frequency: 1800, Q: 1 }),
+        new t.Chorus({ frequency: 0.4, delayTime: 6, depth: 0.7, wet: 0.55 }).start(),
+      ];
+    },
     gain: 0.4,
   },
 
   'pizzicato-strings': {
-    build: () => new Tone.PluckSynth({ attackNoise: 0.8, dampening: 4000, resonance: 0.91 }) as unknown as Tone.PolySynth,
+    build: () => new (T().PluckSynth)({ attackNoise: 0.8, dampening: 4000, resonance: 0.91 }) as unknown as Tone.PolySynth,
     gain: 0.65,
   },
 };
