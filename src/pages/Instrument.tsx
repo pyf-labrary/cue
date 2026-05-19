@@ -2,15 +2,12 @@ import { useParams, Link } from 'react-router-dom';
 import { getInstrument, midiToNoteName } from '@/data/instruments';
 import EmotionRadar from '@/components/visual/EmotionRadar';
 import PlayButton from '@/components/audio/PlayButton';
-import { cdn } from '@/lib/cdn';
-import { isSurrogate } from '@/lib/synth';
 
 /**
- * Instruments whose Tone.Sampler map uses a GM/Western surrogate but have a
- * MiniMax-generated real solo demo at /samples/<id>-real.mp3. Adds a second
- * "听真乐器" play button so users can A/B against the synth phrase.
+ * Primary preview: MiniMax music-2.6 real solo demo at /samples/<id>-real.mp3.
+ * If the file doesn't exist yet (some instruments still pending generation),
+ * audioEngine.playSampleOrSynth falls back to the Tone.Sampler phrase.
  */
-const REAL_DEMO_IDS = new Set(['erhu', 'guzheng', 'guqin', 'choir']);
 
 const FAMILY_LABEL: Record<string, string> = {
   strings: '弦乐',
@@ -58,24 +55,12 @@ export default function Instrument() {
           <p className="text-ink-200 text-lg leading-relaxed mb-8 max-w-[520px]">{inst.timbre}</p>
 
           <PlayButton
-            src={cdn(`samples/${inst.phrase}`)}
+            src={`${import.meta.env.BASE_URL}samples/${inst.id}-real.mp3`}
             synthId={inst.id}
-            label="代表 phrase"
-            sublabel={isSurrogate(inst.id) ? '采样代用：用近似乐器的真录音过渡' : '3–4s 代表乐句'}
+            label="听一段"
+            sublabel="MiniMax music-2.6 真演奏 · 约 12s"
             size="lg"
           />
-
-          {REAL_DEMO_IDS.has(inst.id) && (
-            <div className="mt-4">
-              <PlayButton
-                src={`${import.meta.env.BASE_URL}samples/${inst.id}-real.mp3`}
-                label="听一段真乐器"
-                sublabel="MiniMax music-1.5 真录音演奏 · 12s"
-                hue="#7FB6D0"
-                size="md"
-              />
-            </div>
-          )}
 
           <div className="mt-10 grid sm:grid-cols-2 gap-5">
             <Capsule title="它擅长" body={inst.strength} accent="#E6C36B" />

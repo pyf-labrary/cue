@@ -3,7 +3,6 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { INSTRUMENTS, type InstrumentFamily, type Culture } from '@/data/instruments';
 import { EMOTIONS, type EmotionId } from '@/data/emotions';
 import { audioEngine } from '@/lib/audioEngine';
-import { cdn } from '@/lib/cdn';
 
 const FAMILY_LABEL: Record<InstrumentFamily, string> = {
   strings: '弦乐',
@@ -62,7 +61,7 @@ export default function Atlas() {
       </h1>
       <p className="text-ink-300 max-w-[640px] mb-10 leading-relaxed">
         家族、文化、年代是教科书的分法，对小白没用。我们额外加一条 <span className="text-accent">情绪轴</span>——
-        每件乐器都标了它最擅长的几种情绪。点试听键就能听到它的代表 phrase。
+        每件乐器都标了它最擅长的几种情绪。点试听键听一段它的真实演奏。
       </p>
 
       {/* Filters */}
@@ -142,7 +141,7 @@ export default function Atlas() {
                   {inst.strength}
                 </p>
                 <div className="flex items-center justify-between pt-3 border-t border-ink-700/60">
-                  <CardPlay id={inst.id} sample={cdn(`samples/${inst.phrase}`)} />
+                  <CardPlay id={inst.id} sample={`${import.meta.env.BASE_URL}samples/${inst.id}-real.mp3`} />
                   <TopEmotions inst={inst} />
                 </div>
               </div>

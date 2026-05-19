@@ -5,7 +5,7 @@ Per scene we send a hand-tuned `prompt` describing genre, instruments, tempo,
 mood, and structure. Output goes to `public/scenes/<slug>/mx.mp3`. The script
 is idempotent — files already on disk are skipped unless `--force`.
 
-Cost: ~¥1.5-3 per generation, billed to the key in ~/.minimax.env.
+Cost: ~¥1.5-3 per generation, billed to the key in ~/bin/.minimax.env.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-ENV_FILE = Path.home() / ".minimax.env"
+ENV_FILE = Path.home() / "bin" / ".minimax.env"
 ENDPOINT = "https://api.minimaxi.com/v1/music_generation"
 MODEL = "music-1.5"
 ROOT = Path(__file__).resolve().parent.parent
