@@ -20,6 +20,7 @@
  * shape can be inspected/serialised without pulling in Tone.js.
  */
 import type { TrackId } from '@/data/scenes';
+import { EMOTION_PREVIEWS, type EmotionId } from '@/data/emotions';
 
 export type ClipId = string;
 
@@ -246,6 +247,31 @@ export function sceneToComposition(scene: Scene): Composition {
         label: d.inst,
       }),
     );
+  }
+  return comp;
+}
+
+/**
+ * Build a tiny multi-instrument composition from an emotion's preview phrase.
+ * Notes are grouped into one NoteClip per instrument so they play together.
+ * Used by the home-page "听一下" preview — distinct per emotion (see
+ * EMOTION_PREVIEWS), unlike the old "play the first instrument's phrase".
+ */
+export function emotionToComposition(id: EmotionId): Composition {
+  const preview = EMOTION_PREVIEWS[id] ?? [];
+  const byInst = new Map<string, ClipNote[]>();
+  let maxEnd = 0;
+  for (const p of preview) {
+    const notes = Array.isArray(p.note) ? p.note : [p.note];
+    const arr = byInst.get(p.inst) ?? [];
+    for (const n of notes) arr.push({ note: n, dur: p.dur, at: p.at, vel: p.vel });
+    byInst.set(p.inst, arr);
+    maxEnd = Math.max(maxEnd, p.at + estimateDurSec(p.dur));
+  }
+  const durationSec = Math.max(2, maxEnd + 1.5);
+  const comp = emptyComposition(durationSec);
+  for (const [inst, notes] of byInst) {
+    comp.clips.push(makeNoteClip({ lane: 'mx', inst, notes, startSec: 0, durSec: durationSec, label: inst }));
   }
   return comp;
 }

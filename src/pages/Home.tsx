@@ -1,26 +1,33 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import EmotionWheel from '@/components/visual/EmotionWheel';
 import { FrequencyBars, SoundWave, LaneStripes } from '@/components/visual/Decorations';
 import { EMOTIONS, type Emotion } from '@/data/emotions';
 import { INSTRUMENTS, getInstrument } from '@/data/instruments';
-import { audioEngine } from '@/lib/audioEngine';
-import { hasRecipe } from '@/lib/synth';
+import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
+import { emotionToComposition } from '@/lib/composition';
 
 export default function Home() {
   const [active, setActive] = useState<Emotion>(EMOTIONS[3]); // sorrow as default opening
-  const [previewing, setPreviewing] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
   const sigInstruments = active.signatureInstruments.slice(0, 3);
 
-  const previewEmotion = async (e: Emotion) => {
+  // Drive the preview through the composition engine so each emotion gets its
+  // own distinct multi-instrument phrase (EMOTION_PREVIEWS). "播放中…" shows
+  // while the player is busy with the emotion we just asked for.
+  const player = useCompositionPlayer();
+  const busy = player.status === 'playing' || player.status === 'loading';
+  const previewing = busy ? pendingId : null;
+
+  const previewEmotion = (e: Emotion) => {
     setActive(e);
-    // Pick the first signature instrument that has a synth recipe, play its phrase.
-    const first = e.signatureInstruments.find((id) => hasRecipe(id));
-    if (!first) return;
-    setPreviewing(e.id);
-    await audioEngine.playSynth(first);
-    setPreviewing((cur) => (cur === e.id ? null : cur));
+    setPendingId(e.id);
+    void compositionPlayer.setComposition(emotionToComposition(e.id));
+    compositionPlayer.play();
   };
+
+  // Stop any preview when leaving the page so it doesn't bleed into a scene.
+  useEffect(() => () => compositionPlayer.stop(), []);
 
   return (
     <div className="relative isolate">
