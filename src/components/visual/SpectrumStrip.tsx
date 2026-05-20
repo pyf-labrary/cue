@@ -26,12 +26,19 @@ export default function SpectrumStrip({ height = 28, color = '#E6C36B', bg }: Pr
     const buf = new Float32Array(SPECTRUM_BARS);
     const decay = new Float32Array(SPECTRUM_BARS);
     let raf = 0;
+    // Cached CSS size — refreshed only on resize, never read in the rAF loop.
+    // Calling getBoundingClientRect() every frame forces a synchronous layout
+    // which, paired with the playhead writing `left`/transforms, thrashed.
+    let w = 0;
+    let h = 0;
 
     function resize() {
       const dpr = window.devicePixelRatio || 1;
       const rect = canvas!.getBoundingClientRect();
-      canvas!.width = Math.max(1, Math.floor(rect.width * dpr));
-      canvas!.height = Math.max(1, Math.floor(rect.height * dpr));
+      w = rect.width;
+      h = rect.height;
+      canvas!.width = Math.max(1, Math.floor(w * dpr));
+      canvas!.height = Math.max(1, Math.floor(h * dpr));
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     resize();
@@ -40,9 +47,6 @@ export default function SpectrumStrip({ height = 28, color = '#E6C36B', bg }: Pr
 
     function tick() {
       readSpectrum(buf);
-      const rect = canvas!.getBoundingClientRect();
-      const w = rect.width;
-      const h = rect.height;
       ctx!.clearRect(0, 0, w, h);
       if (bg) {
         ctx!.fillStyle = bg;

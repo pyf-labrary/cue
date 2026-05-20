@@ -5,8 +5,9 @@
  * compositionPlayer singleton, renders 5 lanes with track marks, annotations,
  * and per-lane mute/solo controls.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
+import { usePlayheadVar } from '@/lib/usePlayhead';
 import {
   sceneToComposition,
   setLaneMute,
@@ -30,7 +31,12 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
   const playing = state.status === 'playing';
   const current = state.currentSec;
   const dur = scene.durationSec;
-  const pct = Math.max(0, Math.min(100, (current / dur) * 100));
+
+  // Imperative playhead: one rAF writes `--p` (0..1) on the root, inherited by
+  // every lane line + the ScrubBar. Keeps the bar 60fps-smooth independent of
+  // the throttled React re-renders that drive the time readout below.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  usePlayheadVar(rootRef, () => (dur > 0 ? Math.max(0, Math.min(1, compositionPlayer.nowSec() / dur)) : 0));
 
   // Load scene composition on mount / scene change.
   useEffect(() => {
@@ -62,7 +68,7 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
   }
 
   return (
-    <div className="rounded-2xl border border-ink-700 bg-ink-800/40 overflow-hidden">
+    <div ref={rootRef} className="rounded-2xl border border-ink-700 bg-ink-800/40 overflow-hidden">
       <div className="flex items-center gap-4 px-6 py-4 border-b border-ink-700/60">
         <button
           type="button"
@@ -91,26 +97,33 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
         >
           回到起点
         </button>
-        <div className="flex-1 mx-3 opacity-70 max-w-[280px] hidden sm:block">
-          <SpectrumStrip height={22} />
+        <div className="flex-1 opacity-70 hidden sm:block">
+          <SpectrumStrip height={28} />
         </div>
         <div className="ml-auto font-mono text-sm text-ink-300 tabular-nums">
           {fmt(current)} <span className="text-ink-500">/</span> {fmt(dur)}
         </div>
       </div>
 
-      {/* Scrub bar — drag anywhere to seek, ticks mark annotations. */}
+      {/* Scrub bar inset into the SAME grid column as the lane tracks below
+          ([100px | 1fr | 60px] with gap-4) so the slider and every lane
+          playhead share one identical left/right span. The 60px right cell
+          mirrors the M/S control column width. */}
       <div className="px-6 pt-3 pb-1">
-        <ScrubBar
-          durationSec={dur}
-          currentSec={current}
-          playing={playing}
-          ticks={scene.annotations.map((a) => ({
-            at: a.at,
-            color: a.track ? TRACK_META[a.track].color : '#E6C36B',
-            title: a.text,
-          }))}
-        />
+        <div className="grid grid-cols-[100px_1fr_60px] items-center gap-4">
+          <div aria-hidden />
+          <ScrubBar
+            durationSec={dur}
+            currentSec={current}
+            playing={playing}
+            ticks={scene.annotations.map((a) => ({
+              at: a.at,
+              color: a.track ? TRACK_META[a.track].color : '#E6C36B',
+              title: a.text,
+            }))}
+          />
+          <div aria-hidden />
+        </div>
       </div>
 
       <div className="px-6 py-5 space-y-2">
@@ -122,7 +135,7 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
           const isAudibleNow = laneAudible(tid);
           const isEmpty = marks.length === 0 && tid !== 'nx';
           return (
-            <div key={tid} className="grid grid-cols-[100px_1fr_auto] items-center gap-4">
+            <div key={tid} className="grid grid-cols-[100px_1fr_60px] items-center gap-4">
               <div className="flex items-center gap-2">
                 <span
                   className="font-mono text-[10px] px-2 py-0.5 rounded"
@@ -168,7 +181,7 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
                 )}
                 <div
                   className="absolute top-0 bottom-0 w-px bg-ink-100"
-                  style={{ left: `${pct}%`, transition: playing ? 'left 0.05s linear' : 'none' }}
+                  style={{ left: 'calc(var(--p, 0) * 100%)' }}
                 />
               </div>
 

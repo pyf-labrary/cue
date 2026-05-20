@@ -4,12 +4,12 @@
  *
  * The two AudioContexts (Tone's vs Howler's) are independent, so we keep two
  * AnalyserNodes and max-merge per-bin into one Float32Array on every tick.
- * 32 bins is enough for an educational meter.
+ * 64 bins gives a denser, finer educational meter.
  */
 import { Howler } from 'howler';
 import { getToneAnalyser } from './synth';
 
-const NUM_BARS = 32;
+const NUM_BARS = 64;
 const SRC_BINS = 128; // Tone.Analyser('fft', 128) + Howler analyser fftSize 256
 const MIN_BIN = 1;    // skip DC
 const MAX_BIN = 90;   // ≈15.5kHz at 44.1k — past here is mostly silence for music

@@ -62,6 +62,8 @@ class CompositionPlayerImpl {
   private timeoutIds: number[] = [];
   private rafId: number | null = null;
   private listeners = new Set<Listener>();
+  /** Last time we pushed a React notify from the ticker (throttle anchor). */
+  private lastNotifyMs = 0;
 
   /** Howl per AudioClip — kept alive across play/pause for fast restarts. */
   private howls = new Map<ClipId, Howl>();
@@ -165,6 +167,7 @@ class CompositionPlayerImpl {
     this.startedAtMs = performance.now();
     this.startedFromSec = fromSec;
     this.status = 'playing';
+    this.lastNotifyMs = 0;
     this.notify();
     this.schedule(fromSec, this.session);
     this.startTicker();
@@ -210,6 +213,16 @@ class CompositionPlayerImpl {
       status: this.status,
       currentSec: this.currentSec,
     };
+  }
+
+  /**
+   * Live transport position in seconds, recomputed from the wall clock on
+   * every call. Independent of the throttled React `notify()` cadence — used
+   * by the imperative playhead so the bar stays buttery at 60fps even while
+   * React re-renders are throttled to ~10fps.
+   */
+  nowSec(): number {
+    return this.computeNowSec();
   }
 
   subscribe(cb: Listener): () => void {
@@ -370,7 +383,15 @@ class CompositionPlayerImpl {
         return;
       }
       this.currentSec = this.computeNowSec();
-      this.notify();
+      // Throttle React notify to ~10fps. The playhead reads nowSec() on its
+      // own rAF, so the visual stays 60fps-smooth; this only paces the (much
+      // heavier) re-render of the lane tree + time readout, which is what was
+      // dropping frames and making the bar stutter.
+      const now = performance.now();
+      if (now - this.lastNotifyMs >= 90) {
+        this.lastNotifyMs = now;
+        this.notify();
+      }
       if (this.currentSec >= this.comp.durationSec) {
         this.rafId = null;
         return; // end-of-composition setTimeout will finalize

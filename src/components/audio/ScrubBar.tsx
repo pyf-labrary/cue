@@ -5,26 +5,39 @@
  * pointer-down, follow the cursor visually only, and commit a single seek
  * at pointer-up (resuming if we paused).
  *
+ * Position is driven imperatively via a `--p` CSS var (see usePlayheadVar):
+ * the fill scales and the thumb slides off one DOM write per frame, decoupled
+ * from React re-renders — no per-frame setState, no `transition` rubber-band.
+ *
  * Uses Pointer Events so the same code path covers mouse / touch / pen.
  */
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { compositionPlayer } from '@/lib/compositionPlayer';
+import { usePlayheadVar } from '@/lib/usePlayhead';
 
 interface Props {
   durationSec: number;
   currentSec: number;
-  /** Visual indication: are we mid-playback? Controls the playhead transition. */
+  /** Visual indication: are we mid-playback? (kept for API compatibility) */
   playing?: boolean;
   /** Optional ticks rendered above the bar (e.g. annotation hot points). */
   ticks?: Array<{ at: number; color?: string; title?: string }>;
   className?: string;
 }
 
-export default function ScrubBar({ durationSec, currentSec, playing, ticks, className }: Props) {
+export default function ScrubBar({ durationSec, currentSec, ticks, className }: Props) {
   const barRef = useRef<HTMLDivElement | null>(null);
-  const [dragSec, setDragSec] = useState<number | null>(null);
-  const shownSec = dragSec ?? currentSec;
-  const pct = durationSec > 0 ? Math.max(0, Math.min(100, (shownSec / durationSec) * 100)) : 0;
+  /** Live drag position (px→sec). Held in a ref so dragging never re-renders. */
+  const dragSecRef = useRef<number | null>(null);
+
+  // Drive the --p fraction every frame: cursor while dragging, else the live
+  // transport clock (which returns the paused/seeked position when stopped).
+  usePlayheadVar(barRef, () => {
+    if (durationSec <= 0) return 0;
+    const d = dragSecRef.current;
+    const sec = d != null ? d : compositionPlayer.nowSec();
+    return Math.max(0, Math.min(1, sec / durationSec));
+  });
 
   function secFromClientX(clientX: number): number {
     const el = barRef.current!;
@@ -44,11 +57,11 @@ export default function ScrubBar({ durationSec, currentSec, playing, ticks, clas
     if (wasPlaying) compositionPlayer.pause();
 
     let lastSec = secFromClientX(e.clientX);
-    setDragSec(lastSec);
+    dragSecRef.current = lastSec;
 
     function move(ev: PointerEvent) {
       lastSec = secFromClientX(ev.clientX);
-      setDragSec(lastSec);
+      dragSecRef.current = lastSec;
     }
     function up(ev: PointerEvent) {
       try { el!.releasePointerCapture(ev.pointerId); } catch { /* ignore */ }
@@ -58,7 +71,7 @@ export default function ScrubBar({ durationSec, currentSec, playing, ticks, clas
       // Commit the final position once, then resume if we were playing.
       compositionPlayer.seek(lastSec);
       if (wasPlaying) compositionPlayer.play();
-      setDragSec(null);
+      dragSecRef.current = null;
     }
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -76,8 +89,8 @@ export default function ScrubBar({ durationSec, currentSec, playing, ticks, clas
       className={`relative h-2 rounded-full bg-ink-700/60 cursor-pointer select-none group touch-none ${className ?? ''}`}
     >
       <div
-        className="absolute top-0 bottom-0 left-0 rounded-full bg-accent/60 group-hover:bg-accent transition-colors"
-        style={{ width: `${pct}%`, transition: playing ? 'width 0.05s linear' : 'none' }}
+        className="absolute top-0 bottom-0 left-0 w-full origin-left rounded-full bg-accent/60 group-hover:bg-accent transition-colors"
+        style={{ transform: 'scaleX(var(--p, 0))' }}
       />
       {ticks?.map((t, i) => (
         <div
@@ -89,7 +102,7 @@ export default function ScrubBar({ durationSec, currentSec, playing, ticks, clas
       ))}
       <div
         className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-accent shadow ring-2 ring-ink-900 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-        style={{ left: `${pct}%` }}
+        style={{ left: 'calc(var(--p, 0) * 100%)' }}
       />
     </div>
   );
