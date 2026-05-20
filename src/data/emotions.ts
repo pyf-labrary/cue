@@ -159,76 +159,67 @@ export type PreviewNote = {
 
 /**
  * A short, emotion-specific phrase for the home-page "听一下" preview, played
- * through compositionPlayer (see emotionToComposition). Each is a distinct
- * mode / register / rhythm on the emotion's own signature instruments — so
- * joy ≠ playful and romance ≠ suspense even when they share a lead instrument.
- * Previously the preview just played the first signature instrument's generic
- * phrase, which made those pairs sound identical.
+ * through compositionPlayer (see emotionToComposition). One instrument per
+ * emotion (single timbre — cleaner than layering); the mood is carried by the
+ * phrase's register / mode / rhythm. The 12 leads are all different instruments
+ * so no two emotions collide — fixing the old bug where the preview played the
+ * first signature instrument's generic phrase (joy/playful both flute,
+ * suspense/romance both violin → identical).
  */
 export const EMOTION_PREVIEWS: Record<EmotionId, PreviewNote[]> = {
-  // 紧张 — low pulsing cell + tritone drone, accelerating into a drum hit.
+  // Single timbre each — 12 distinct instruments, mood carried by the phrase
+  // (register / mode / rhythm), so even the old collision pairs differ:
+  // 喜悦=长笛 vs 嬉戏=木琴；浪漫=小提琴 vs 悬疑=钢琴。
+
+  // 紧张 — cello: low minor-2nd pulse, accelerating + crescendoing, unresolved.
   tension: [
-    { inst: 'synth-pad', note: ['C2', 'F#2'], dur: '1n', at: 0, vel: 0.28 },
-    { inst: 'cello', note: 'C2',  dur: '8n', at: 0,   vel: 0.4 },
-    { inst: 'cello', note: 'C2',  dur: '8n', at: 0.7, vel: 0.46 },
-    { inst: 'cello', note: 'C2',  dur: '8n', at: 1.3, vel: 0.52 },
-    { inst: 'cello', note: 'C2',  dur: '8n', at: 1.8, vel: 0.58 },
-    { inst: 'cello', note: 'C#2', dur: '8n', at: 2.3, vel: 0.64 },
-    { inst: 'cello', note: 'C2',  dur: '8n', at: 2.7, vel: 0.7 },
-    { inst: 'cello', note: 'C#2', dur: '4n', at: 3.1, vel: 0.78 },
-    { inst: 'taiko', note: 'C1',  dur: '4n', at: 3.4, vel: 0.7 },
+    { inst: 'cello', note: 'C2',  dur: '8n', at: 0,   vel: 0.42 },
+    { inst: 'cello', note: 'C2',  dur: '8n', at: 0.7, vel: 0.48 },
+    { inst: 'cello', note: 'C2',  dur: '8n', at: 1.3, vel: 0.54 },
+    { inst: 'cello', note: 'C2',  dur: '8n', at: 1.8, vel: 0.6 },
+    { inst: 'cello', note: 'C#2', dur: '8n', at: 2.3, vel: 0.66 },
+    { inst: 'cello', note: 'C2',  dur: '8n', at: 2.7, vel: 0.72 },
+    { inst: 'cello', note: 'C#2', dur: '4n', at: 3.1, vel: 0.82 },
   ],
-  // 悬疑 — sparse: a piano tick, two celesta points, a thin high violin creep.
+  // 悬疑 — piano: single sparse notes with lots of air, a tritone unease (秒针).
   suspense: [
-    { inst: 'piano',   note: 'C3', dur: '4n', at: 0,   vel: 0.4 },
-    { inst: 'celesta', note: 'G5', dur: '8n', at: 1.2, vel: 0.4 },
-    { inst: 'celesta', note: 'G5', dur: '8n', at: 2.6, vel: 0.34 },
-    { inst: 'violin',  note: 'E6', dur: '2n', at: 3.0, vel: 0.24 },
-    { inst: 'piano',   note: 'C3', dur: '4n', at: 3.7, vel: 0.3 },
+    { inst: 'piano', note: 'C3',  dur: '4n', at: 0,   vel: 0.42 },
+    { inst: 'piano', note: 'C3',  dur: '4n', at: 1.4, vel: 0.34 },
+    { inst: 'piano', note: 'F#3', dur: '8n', at: 2.8, vel: 0.4 },
+    { inst: 'piano', note: 'C3',  dur: '4n', at: 3.8, vel: 0.3 },
   ],
-  // 恐惧 — formless low drone + low minor choir, no beat.
+  // 恐惧 — contrabass: formless very-low semitone clash, no beat.
   dread: [
-    { inst: 'synth-pad',  note: ['C2', 'G2'], dur: '1n', at: 0, vel: 0.3 },
-    { inst: 'contrabass', note: 'C2', dur: '1n', at: 0,   vel: 0.34 },
-    { inst: 'choir',      note: 'C3', dur: '1n', at: 1.0, vel: 0.24 },
-    { inst: 'choir',      note: 'D#3', dur: '1n', at: 2.6, vel: 0.22 },
+    { inst: 'contrabass', note: 'C2',  dur: '1n',  at: 0,   vel: 0.42 },
+    { inst: 'contrabass', note: 'C#2', dur: '2n.', at: 2.0, vel: 0.4 },
+    { inst: 'contrabass', note: 'C2',  dur: '1n',  at: 3.0, vel: 0.44 },
   ],
-  // 悲悯 — descending cello line over sparse piano, breathing.
+  // 悲悯 — erhu: a descending sighing line, breathing.
   sorrow: [
-    { inst: 'cello', note: 'A3', dur: '2n',  at: 0,   vel: 0.55 },
-    { inst: 'cello', note: 'F3', dur: '2n',  at: 1.8, vel: 0.5 },
-    { inst: 'cello', note: 'E3', dur: '2n.', at: 3.4, vel: 0.42 },
-    { inst: 'piano', note: ['A2', 'E3'], dur: '4n', at: 0,   vel: 0.3 },
-    { inst: 'piano', note: ['F2', 'C3'], dur: '4n', at: 2.4, vel: 0.28 },
+    { inst: 'erhu', note: 'A4', dur: '2n',  at: 0,   vel: 0.5 },
+    { inst: 'erhu', note: 'F4', dur: '4n.', at: 1.6, vel: 0.46 },
+    { inst: 'erhu', note: 'D4', dur: '2n.', at: 2.8, vel: 0.4 },
   ],
-  // 庄严 — organ + low brass + slow timpani heartbeat (weight).
+  // 庄严 — pipe-organ: two slow, heavy low chords (weight + awe).
   solemn: [
-    { inst: 'pipe-organ',  note: ['G2', 'C3'], dur: '1n', at: 0, vel: 0.32 },
-    { inst: 'timpani',     note: 'C2', dur: '4n', at: 0,   vel: 0.5 },
-    { inst: 'timpani',     note: 'C2', dur: '4n', at: 2.0, vel: 0.55 },
-    { inst: 'french-horn', note: 'C3', dur: '2n', at: 0.5, vel: 0.5 },
-    { inst: 'french-horn', note: 'D#3', dur: '2n.', at: 2.5, vel: 0.5 },
+    { inst: 'pipe-organ', note: ['C3', 'G3'], dur: '1n', at: 0,   vel: 0.42 },
+    { inst: 'pipe-organ', note: ['A2', 'E3'], dur: '1n', at: 2.2, vel: 0.42 },
   ],
-  // 神圣 — bright major organ+choir chord, rising celesta sparkle (light).
+  // 神圣 — choir: a rising, brightening major "aah" chord (light from below).
   sacred: [
-    { inst: 'pipe-organ', note: ['C3', 'E3', 'G3'], dur: '1n', at: 0,   vel: 0.32 },
-    { inst: 'choir',      note: ['C4', 'E4', 'G4'], dur: '1n', at: 0.4, vel: 0.28 },
-    { inst: 'celesta',    note: 'C6', dur: '8n', at: 1.5, vel: 0.4 },
-    { inst: 'celesta',    note: 'E6', dur: '8n', at: 1.9, vel: 0.4 },
-    { inst: 'celesta',    note: 'G6', dur: '8n', at: 2.3, vel: 0.4 },
-    { inst: 'celesta',    note: 'C7', dur: '4n', at: 2.8, vel: 0.45 },
+    { inst: 'choir', note: 'C3', dur: '1n', at: 0,   vel: 0.3 },
+    { inst: 'choir', note: ['C4', 'E4', 'G4'], dur: '1n', at: 0.6, vel: 0.32 },
+    { inst: 'choir', note: ['C4', 'E4', 'G4', 'C5'], dur: '1n', at: 2.4, vel: 0.36 },
   ],
-  // 思念 — clarinet line that reaches but won't resolve, over cello + guzheng.
+  // 思念 — clarinet: a line that reaches up and won't resolve (东方的悬而未落).
   longing: [
-    { inst: 'cello',    note: 'C3', dur: '1n', at: 0, vel: 0.4 },
-    { inst: 'clarinet', note: 'D4', dur: '4n',  at: 0.5, vel: 0.45 },
-    { inst: 'clarinet', note: 'F4', dur: '4n',  at: 1.3, vel: 0.48 },
-    { inst: 'clarinet', note: 'G4', dur: '2n',  at: 2.1, vel: 0.5 },
-    { inst: 'clarinet', note: 'F4', dur: '2n.', at: 3.3, vel: 0.42 },
-    { inst: 'guzheng',  note: 'A4', dur: '8n', at: 2.0, vel: 0.32 },
-    { inst: 'guzheng',  note: 'C5', dur: '8n', at: 2.5, vel: 0.3 },
+    { inst: 'clarinet', note: 'D4', dur: '4n',  at: 0,   vel: 0.45 },
+    { inst: 'clarinet', note: 'F4', dur: '4n',  at: 0.8, vel: 0.48 },
+    { inst: 'clarinet', note: 'G4', dur: '2n',  at: 1.6, vel: 0.5 },
+    { inst: 'clarinet', note: 'A4', dur: '4n',  at: 2.8, vel: 0.46 },
+    { inst: 'clarinet', note: 'G4', dur: '2n.', at: 3.6, vel: 0.4 },
   ],
-  // 喜悦 — major flute melody, lyrical 8th-notes, bouncy pizz + warm piano.
+  // 喜悦 — flute: lyrical major skip, resolves home (laughs).
   joy: [
     { inst: 'flute', note: 'C5', dur: '8n', at: 0,   vel: 0.5 },
     { inst: 'flute', note: 'E5', dur: '8n', at: 0.4, vel: 0.5 },
@@ -237,15 +228,9 @@ export const EMOTION_PREVIEWS: Record<EmotionId, PreviewNote[]> = {
     { inst: 'flute', note: 'A5', dur: '8n', at: 1.6, vel: 0.5 },
     { inst: 'flute', note: 'G5', dur: '4n', at: 2.0, vel: 0.5 },
     { inst: 'flute', note: 'E5', dur: '8n', at: 2.6, vel: 0.46 },
-    { inst: 'flute', note: 'G5', dur: '4n', at: 3.0, vel: 0.52 },
-    { inst: 'pizzicato-strings', note: 'C3', dur: '8n', at: 0,   vel: 0.45 },
-    { inst: 'pizzicato-strings', note: 'G3', dur: '8n', at: 0.8, vel: 0.45 },
-    { inst: 'pizzicato-strings', note: 'C3', dur: '8n', at: 1.6, vel: 0.45 },
-    { inst: 'pizzicato-strings', note: 'G3', dur: '8n', at: 2.4, vel: 0.45 },
-    { inst: 'piano', note: ['C4', 'E4', 'G4'], dur: '4n', at: 0,   vel: 0.3 },
-    { inst: 'piano', note: ['C4', 'F4', 'A4'], dur: '4n', at: 1.6, vel: 0.3 },
+    { inst: 'flute', note: 'C5', dur: '4n', at: 3.0, vel: 0.5 },
   ],
-  // 嬉戏 — xylophone-led, staccato 16ths, mischievous; ends UNcollected on F#.
+  // 嬉戏 — xylophone: staccato 16ths, mischievous; ends UNcollected on F#.
   playful: [
     { inst: 'xylophone', note: 'C5',  dur: '16n', at: 0,    vel: 0.5 },
     { inst: 'xylophone', note: 'D5',  dur: '16n', at: 0.25, vel: 0.5 },
@@ -254,38 +239,28 @@ export const EMOTION_PREVIEWS: Record<EmotionId, PreviewNote[]> = {
     { inst: 'xylophone', note: 'E5',  dur: '16n', at: 1.3,  vel: 0.45 },
     { inst: 'xylophone', note: 'C5',  dur: '16n', at: 1.55, vel: 0.45 },
     { inst: 'xylophone', note: 'G5',  dur: '8n',  at: 2.0,  vel: 0.5 },
-    { inst: 'pizzicato-strings', note: 'G2', dur: '8n', at: 0,   vel: 0.45 },
-    { inst: 'pizzicato-strings', note: 'G2', dur: '8n', at: 0.5, vel: 0.45 },
-    { inst: 'pizzicato-strings', note: 'D3', dur: '8n', at: 1.0, vel: 0.45 },
-    { inst: 'pizzicato-strings', note: 'G2', dur: '8n', at: 1.5, vel: 0.45 },
-    { inst: 'pizzicato-strings', note: 'D3', dur: '8n', at: 2.0, vel: 0.45 },
-    { inst: 'flute',     note: 'A5',  dur: '16n', at: 2.4, vel: 0.4 },
-    { inst: 'flute',     note: 'F5',  dur: '16n', at: 2.6, vel: 0.4 },
-    { inst: 'xylophone', note: 'F#5', dur: '8n',  at: 3.0, vel: 0.5 },
+    { inst: 'xylophone', note: 'A5',  dur: '16n', at: 2.5,  vel: 0.45 },
+    { inst: 'xylophone', note: 'F#5', dur: '8n',  at: 3.0,  vel: 0.5 },
   ],
-  // 浪漫 — warm violin melody over piano chords + an oboe counter-voice.
+  // 浪漫 — violin: a warm, singing, rubato line.
   romance: [
-    { inst: 'piano',  note: ['F3', 'A3', 'C4'], dur: '2n', at: 0,   vel: 0.3 },
-    { inst: 'piano',  note: ['E3', 'G3', 'C4'], dur: '2n', at: 2.0, vel: 0.3 },
-    { inst: 'violin', note: 'A4', dur: '4n.', at: 0.3, vel: 0.45 },
-    { inst: 'violin', note: 'C5', dur: '4n',  at: 1.1, vel: 0.5 },
-    { inst: 'violin', note: 'D5', dur: '2n',  at: 1.8, vel: 0.52 },
-    { inst: 'violin', note: 'C5', dur: '4n.', at: 3.0, vel: 0.45 },
-    { inst: 'oboe',   note: 'F4', dur: '2n',  at: 2.3, vel: 0.34 },
+    { inst: 'violin', note: 'A4', dur: '4n.', at: 0,   vel: 0.45 },
+    { inst: 'violin', note: 'C5', dur: '4n',  at: 0.9, vel: 0.5 },
+    { inst: 'violin', note: 'D5', dur: '2n',  at: 1.6, vel: 0.52 },
+    { inst: 'violin', note: 'C5', dur: '4n',  at: 2.8, vel: 0.48 },
+    { inst: 'violin', note: 'A4', dur: '2n.', at: 3.5, vel: 0.42 },
   ],
-  // 史诗 — "压低再炸": quiet timpani build, then brass + drum + choir hit.
+  // 史诗 — french-horn: a rising fanfare, "压低再炸" — soft low to a loud held top.
   epic: [
-    { inst: 'timpani',     note: 'C2', dur: '4n', at: 0,   vel: 0.32 },
-    { inst: 'timpani',     note: 'C2', dur: '4n', at: 1.0, vel: 0.4 },
-    { inst: 'french-horn', note: ['C3', 'G3'], dur: '2n', at: 2.0, vel: 0.5 },
-    { inst: 'timpani',     note: 'C2', dur: '4n', at: 3.0, vel: 0.85 },
-    { inst: 'choir',       note: ['C4', 'G4'], dur: '1n', at: 3.0, vel: 0.4 },
-    { inst: 'french-horn', note: 'C4', dur: '2n', at: 3.2, vel: 0.7 },
+    { inst: 'french-horn', note: 'C3', dur: '4n', at: 0,   vel: 0.4 },
+    { inst: 'french-horn', note: 'E3', dur: '4n', at: 0.8, vel: 0.45 },
+    { inst: 'french-horn', note: 'G3', dur: '4n', at: 1.6, vel: 0.52 },
+    { inst: 'french-horn', note: 'C4', dur: '2n', at: 2.4, vel: 0.7 },
+    { inst: 'french-horn', note: 'E4', dur: '1n', at: 3.4, vel: 0.85 },
   ],
-  // 虚无 — minimal pad + one lone guqin pluck + a distant piano note, no beat.
+  // 虚无 — guqin: two lone plucks with long decay, no beat (空气厚度).
   void: [
-    { inst: 'synth-pad', note: ['C3', 'G3'], dur: '1n', at: 0, vel: 0.24 },
-    { inst: 'guqin',     note: 'C3', dur: '2n.', at: 1.0, vel: 0.32 },
-    { inst: 'piano',     note: 'G3', dur: '2n',  at: 3.2, vel: 0.2 },
+    { inst: 'guqin', note: 'C3', dur: '2n.', at: 0,   vel: 0.34 },
+    { inst: 'guqin', note: 'G3', dur: '2n',  at: 2.4, vel: 0.28 },
   ],
 };

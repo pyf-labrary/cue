@@ -252,10 +252,11 @@ export function sceneToComposition(scene: Scene): Composition {
 }
 
 /**
- * Build a tiny multi-instrument composition from an emotion's preview phrase.
- * Notes are grouped into one NoteClip per instrument so they play together.
- * Used by the home-page "听一下" preview — distinct per emotion (see
- * EMOTION_PREVIEWS), unlike the old "play the first instrument's phrase".
+ * Build a tiny composition from an emotion's preview phrase. Notes are grouped
+ * into one NoteClip per instrument (each emotion is single-instrument, so this
+ * is normally one clip). Used by the home-page "听一下" preview — distinct per
+ * emotion (see EMOTION_PREVIEWS), unlike the old "play the first instrument's
+ * phrase" which made shared-lead emotions sound identical.
  */
 export function emotionToComposition(id: EmotionId): Composition {
   const preview = EMOTION_PREVIEWS[id] ?? [];
