@@ -89,7 +89,7 @@ export default function Home() {
 
       {/* ACTIVE EMOTION DETAIL */}
       <section
-        className="border-t border-ink-700/60"
+        className="relative z-10 border-t border-ink-700/60"
         style={{
           background: `linear-gradient(180deg, ${active.hue}14 0%, transparent 60%)`,
         }}
