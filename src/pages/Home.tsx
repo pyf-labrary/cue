@@ -4,30 +4,32 @@ import EmotionWheel from '@/components/visual/EmotionWheel';
 import { FrequencyBars, SoundWave, LaneStripes } from '@/components/visual/Decorations';
 import { EMOTIONS, type Emotion } from '@/data/emotions';
 import { INSTRUMENTS, getInstrument } from '@/data/instruments';
-import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
-import { emotionToComposition } from '@/lib/composition';
+import { audioEngine } from '@/lib/audioEngine';
+
+/** Resolve an emotion's 15s preview mp3 (public/emotions/<id>.mp3) under BASE_URL. */
+function previewSrc(e: Emotion): string | null {
+  return e.loop ? `${import.meta.env.BASE_URL}${e.loop}` : null;
+}
 
 export default function Home() {
   const [active, setActive] = useState<Emotion>(EMOTIONS[3]); // sorrow as default opening
-  const [pendingId, setPendingId] = useState<string | null>(null);
   const sigInstruments = active.signatureInstruments.slice(0, 3);
 
-  // Drive the preview through the composition engine so each emotion gets its
-  // own distinct multi-instrument phrase (EMOTION_PREVIEWS). "播放中…" shows
-  // while the player is busy with the emotion we just asked for.
-  const player = useCompositionPlayer();
-  const busy = player.status === 'playing' || player.status === 'loading';
-  const previewing = busy ? pendingId : null;
+  // Drive the preview straight through the audio engine: each emotion plays its
+  // own MiniMax-generated 15s instrumental mp3. Subscribe to the engine so the
+  // "播放中…" / "听一下 →" toggle reflects which clip is actually sounding.
+  const [playingSrc, setPlayingSrc] = useState<string | null>(null);
+  useEffect(() => audioEngine.subscribe(setPlayingSrc), []);
+  const previewing = EMOTIONS.find((e) => previewSrc(e) === playingSrc)?.id ?? null;
 
   const previewEmotion = (e: Emotion) => {
     setActive(e);
-    setPendingId(e.id);
-    void compositionPlayer.setComposition(emotionToComposition(e.id));
-    compositionPlayer.play();
+    const src = previewSrc(e);
+    if (src) audioEngine.play(src, { fadeMs: 250, volume: 0.9 });
   };
 
   // Stop any preview when leaving the page so it doesn't bleed into a scene.
-  useEffect(() => () => compositionPlayer.stop(), []);
+  useEffect(() => () => audioEngine.stop(), []);
 
   return (
     <div className="relative isolate">
