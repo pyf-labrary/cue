@@ -142,8 +142,9 @@ export default function Home() {
             </div>
 
             <div className="mt-10 text-ink-400 text-sm leading-relaxed">
-              <span className="text-ink-200">提示</span>：M1 阶段只铺好了 <span className="text-accent">大提琴</span> 一件，作为示范页。
-              后续会把 60 件常用乐器全数收录，并把它们和情绪、片段交叉链接起来。
+              <span className="text-ink-200">提示</span>：点开任意乐器名进入它的图鉴页——
+              <span className="text-accent">{INSTRUMENTS.length} 件乐器</span>现已全部上线，每件都配了 MiniMax 真演奏试听与音色拆解。
+              后续会继续扩充乐器，并把它们和情绪、片段交叉链接起来。
             </div>
           </div>
         </div>
