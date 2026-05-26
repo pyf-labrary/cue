@@ -148,11 +148,15 @@ PROMPTS: dict[str, dict] = {
     # ----------------- Brass (add 2) -----------------
     "french-horn": {
         "prompt": (
-            "Solo French horn unaccompanied, 10 seconds. Noble, heroic "
-            "sustained melodic line in the middle register, warm round "
-            "timbre with hand-stopping nuance, in the manner of John Williams "
-            "or Strauss horn solo. Tempo about 60 BPM. Studio with concert-hall "
-            "ambience. No orchestra, no other brass, no drums."
+            "Solo French horn, completely unaccompanied — one brass instrument "
+            "only, no singing, no human voice, no synth. 10 seconds. A noble, "
+            "heroic, sustained melodic line in the middle register. The timbre "
+            "is unmistakably a French horn: warm, round, dark-golden brass, "
+            "mellow and broad, with soft hand-stopping nuance and a gentle "
+            "brassy bloom on the sustained notes, in the manner of a John "
+            "Williams or Strauss horn solo. Tempo about 60 BPM. Studio with "
+            "concert-hall ambience. No orchestra, no trumpet, no other brass, "
+            "no drums, no other instruments."
         ),
         "lyrics": "##[Instrumental]##",
     },
@@ -202,31 +206,44 @@ PROMPTS: dict[str, dict] = {
     # ----------------- Percussion (add 3) -----------------
     "timpani": {
         "prompt": (
-            "Solo orchestral timpani unaccompanied, 10 seconds. Dramatic "
-            "rolls building to a climactic accent then a low rumbling roll, "
-            "tuned kettle drums in the manner of the opening of Mahler 2 or "
-            "Strauss Also Sprach Zarathustra. No orchestra, no other percussion, "
-            "no brass, no strings — only the solo timpani."
+            "Solo orchestral timpani, completely unaccompanied — tuned kettle "
+            "drums only, no singing, no human voice, no melodic instrument, no "
+            "synth. 10 seconds. The timbre is unmistakably timpani: deep, "
+            "resonant, pitched low drum tones struck with soft mallets. A "
+            "dramatic crescendoing roll (sustained low tremolo) builds to a "
+            "climactic accented boom, then settles into a low rumbling roll, in "
+            "the manner of the opening of Strauss Also Sprach Zarathustra or "
+            "Mahler 2. No orchestra, no other percussion, no brass, no strings, "
+            "no melody — only the solo timpani."
         ),
         "lyrics": "##[Instrumental]##",
     },
     "taiko": {
         "prompt": (
-            "Solo Japanese taiko drum unaccompanied, 10 seconds. Powerful "
-            "deep accented strikes with occasional rolls, in the manner of "
-            "Kodo or a kabuki performance. Dry, focused, with body resonance. "
-            "Tempo about 100 BPM. Only taiko, absolutely no other instruments, "
-            "no melody, no other percussion."
+            "Solo Japanese taiko drum, completely unaccompanied — a single big "
+            "Japanese o-daiko barrel drum only, no singing, no chanting, no "
+            "human voice, no melodic instrument, no synth. 10 seconds. The "
+            "timbre is unmistakably taiko: a huge wooden barrel drum struck with "
+            "thick bachi sticks, producing powerful, deep, booming low-frequency "
+            "hits with a woody attack and long body resonance you feel in the "
+            "chest, with occasional fast rolls (renda), in the manner of Kodo. "
+            "Dry and focused, tempo about 100 BPM. Only the taiko, no melody, "
+            "no other percussion, no other instruments."
         ),
         "lyrics": "##[Instrumental]##",
     },
     "xylophone": {
         "prompt": (
-            "Solo orchestral xylophone unaccompanied, 10 seconds. Bright "
-            "wooden mallet melody, fast articulate sixteenth-note figure in "
-            "the upper register with rolls, in the manner of Saint-Saens "
-            "Danse Macabre. Tempo about 130 BPM. Close-mic studio recording. "
-            "No orchestra, no piano, no other percussion — only the solo xylophone."
+            "Solo orchestral xylophone, completely unaccompanied — wooden-bar "
+            "mallet percussion only, no singing, no human voice, no synth, no "
+            "other instrument. 10 seconds. The timbre is unmistakably a "
+            "xylophone: bright, hard, dry, sharp wooden bars struck with hard "
+            "mallets, a clattering percussive short-decay attack in the high "
+            "register — the bony, brittle Saint-Saens Danse Macabre sound. A "
+            "fast, articulate sixteenth-note figure with a few quick rolls, "
+            "tempo about 130 BPM. Close-mic studio recording. No marimba, no "
+            "vibraphone, no piano, no orchestra, no other percussion — only the "
+            "solo xylophone."
         ),
         "lyrics": "##[Instrumental]##",
     },
@@ -273,7 +290,15 @@ def load_key() -> str:
 
 
 def call(prompt: str, lyrics: str, key: str) -> bytes:
-    payload = {"model": MODEL, "prompt": prompt, "lyrics": lyrics}
+    # is_instrumental: force pure instrumental, no vocals. Every atlas demo is a
+    # solo instrument — without this the model sometimes layers in a sung voice
+    # that smears the timbre (pyf's "doesn't sound like the instrument" report).
+    payload = {
+        "model": MODEL,
+        "prompt": prompt,
+        "lyrics": lyrics,
+        "is_instrumental": True,
+    }
     req = urllib.request.Request(
         ENDPOINT,
         data=json.dumps(payload).encode("utf-8"),
@@ -283,7 +308,7 @@ def call(prompt: str, lyrics: str, key: str) -> bytes:
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=300) as resp:
         body = json.loads(resp.read().decode("utf-8"))
     base = body.get("base_resp", {})
     if base.get("status_code") not in (0, None):
