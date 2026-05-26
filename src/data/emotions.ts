@@ -258,9 +258,16 @@ export const EMOTION_PREVIEWS: Record<EmotionId, PreviewNote[]> = {
     { inst: 'french-horn', note: 'C4', dur: '2n', at: 2.4, vel: 0.7 },
     { inst: 'french-horn', note: 'E4', dur: '1n', at: 3.4, vel: 0.85 },
   ],
-  // 虚无 — guqin: two lone plucks with long decay, no beat (空气厚度).
+  // 虚无 — void-pad: a drifting, detuned sine pad swelling in a vast reverb,
+  // with sparse high shimmers floating far above and a lone piano note dropped
+  // into the silence (偶发钢琴单音). Long decay, big space, low dynamics, lots of
+  // air — 空灵空寂，节拍消失. Replaces the old two thin guqin plucks.
   void: [
-    { inst: 'guqin', note: 'C3', dur: '2n.', at: 0,   vel: 0.34 },
-    { inst: 'guqin', note: 'G3', dur: '2n',  at: 2.4, vel: 0.28 },
+    { inst: 'void-pad', note: ['C3', 'G3'], dur: '1n',  at: 0,   vel: 0.34 },
+    { inst: 'void-pad', note: 'G5',         dur: '2n.', at: 1.8, vel: 0.18 },
+    { inst: 'piano',    note: 'C4',         dur: '2n',  at: 2.6, vel: 0.22 },
+    { inst: 'void-pad', note: ['A2', 'E3'], dur: '1n',  at: 3.8, vel: 0.3  },
+    { inst: 'void-pad', note: 'D5',         dur: '2n',  at: 5.6, vel: 0.16 },
+    { inst: 'piano',    note: 'G4',         dur: '2n',  at: 6.6, vel: 0.18 },
   ],
 };

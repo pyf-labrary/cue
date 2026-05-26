@@ -458,6 +458,8 @@ const PHRASES: Record<string, SynthPhrase> = {
   celesta: compose([['C6', '8n'], ['E6', '8n'], ['G6', '8n'], ['E6', '8n'], ['B5', '4n'], ['C6', '2n']], 110),
   'synth-pad': compose([[['C3', 'G3', 'C4'], '1n'], [['A#2', 'F3', 'A#3'], '1n']], 50),
   'pizzicato-strings': compose([['G3', '8n'], ['B3', '8n'], ['D4', '8n'], ['G4', '8n'], ['D4', '8n'], ['B3', '4n'], ['G3', '4n']], 110),
+  // 虚无：极慢的开放五度漂移，一缕高音浮在上方，不解决。
+  'void-pad': compose([[['C3', 'G3'], '1n'], ['G5', '2n'], [['A2', 'E3'], '1n']], 40),
 };
 
 /* -------------------------------------------------------------------------- */
@@ -522,5 +524,39 @@ const RECIPES: Record<string, SynthRecipe> = {
   'pizzicato-strings': {
     build: () => new (T().PluckSynth)({ attackNoise: 0.8, dampening: 4000, resonance: 0.91 }) as unknown as Tone.PolySynth,
     gain: 0.65,
+  },
+
+  // 虚无 — a dedicated ethereal pad (the old void preview was two lone guqin
+  // plucks: too thin, no "air"). Three slightly-detuned sines beat against each
+  // other for a slowly shifting, almost-pitchless shimmer; a long swell + 4.5s
+  // release means notes never really "stop", they evaporate. The chain opens
+  // the space: a glacial AutoFilter LFO drifts the cutoff so the timbre breathes
+  // on its own, a long feedback delay scatters fragments, and a big reverb makes
+  // the room feel endless. Kept fully in-browser Tone.js — only void uses this.
+  'void-pad': {
+    build: () => {
+      const t = T();
+      return new t.PolySynth(t.Synth, {
+        oscillator: { type: 'fatsine', count: 3, spread: 30 },
+        envelope: { attack: 1.4, decay: 1.4, sustain: 0.78, release: 4.5 },
+      } as unknown as Partial<Tone.SynthOptions>);
+    },
+    chain: () => {
+      const t = T();
+      return [
+        // Self-contained LFO-driven filter (no external LFO node to keep alive)
+        // — a ~13s sweep cycle drifting 480→~2700 Hz so the pad slowly "opens".
+        new t.AutoFilter({
+          frequency: 0.075,
+          baseFrequency: 480,
+          octaves: 2.5,
+          depth: 0.6,
+          type: 'sine',
+        }).start(),
+        new t.FeedbackDelay({ delayTime: 0.62, feedback: 0.48, wet: 0.32 }),
+        new t.Reverb({ decay: 6.5, preDelay: 0.06, wet: 0.5 }),
+      ];
+    },
+    gain: 0.34,
   },
 };
