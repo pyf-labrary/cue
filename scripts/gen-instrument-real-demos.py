@@ -17,7 +17,12 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-ENV_FILE = Path.home() / "bin" / ".minimax.env"
+# Prefer the prepaid plan key (saves pay-as-you-go quota); fall back to the
+# pay-as-you-go key. Each entry: (file, var-name).
+KEY_SOURCES = [
+    (Path.home() / "bin" / ".minimax-plan.env", "MINIMAX_PLAN_API_KEY"),
+    (Path.home() / "bin" / ".minimax.env", "MINIMAX_API_KEY"),
+]
 ENDPOINT = "https://api.minimaxi.com/v1/music_generation"
 MODEL = "music-2.6"
 ROOT = Path(__file__).resolve().parent.parent
@@ -254,14 +259,17 @@ PROMPTS: dict[str, dict] = {
 
 
 def load_key() -> str:
-    if ENV_FILE.exists():
-        for line in ENV_FILE.read_text().splitlines():
-            if line.startswith("MINIMAX_API_KEY="):
-                return line.split("=", 1)[1].strip()
-    key = os.environ.get("MINIMAX_API_KEY", "")
-    if not key:
-        sys.exit("ERROR: MINIMAX_API_KEY not found")
-    return key
+    for env_file, var in KEY_SOURCES:
+        if env_file.exists():
+            for line in env_file.read_text().splitlines():
+                if line.startswith(f"{var}="):
+                    val = line.split("=", 1)[1].strip()
+                    if val:
+                        print(f"  (using {var} from {env_file.name})")
+                        return val
+        if os.environ.get(var):
+            return os.environ[var]
+    sys.exit("ERROR: no MiniMax API key found (.minimax-plan.env / .minimax.env)")
 
 
 def call(prompt: str, lyrics: str, key: str) -> bytes:

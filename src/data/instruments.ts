@@ -30,7 +30,9 @@ export interface Instrument {
   strength: string;
   caveat: string;
   rangeMidi: [number, number];
-  /** Filename under /cue/samples/<id>/ on CDN. */
+  /** MiniMax music-2.6 solo demo, served from /cue/samples/<id>-real.mp3.
+   *  Atlas/Instrument pages address it by `<id>-real.mp3` directly; this field
+   *  mirrors that path for reference. */
   phrase: string;
   films: FilmExample[];
 }
@@ -48,7 +50,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '一根长弓拉出一条不会断的线，给画面一个"有人在那里"的体温。',
     caveat: '别和中提琴叠太厚——两件都在 C3–G4 之间，叠多了像糊在一起的奶油。',
     rangeMidi: [36, 76],
-    phrase: 'cello/phrase-01.mp3',
+    phrase: 'cello-real.mp3',
     films: [
       { film: '辛德勒的名单', year: 1993, composer: '约翰·威廉姆斯', why: '帕尔曼独奏 + 弦乐铺底，旋律每一次回落都比上一次更轻——大提琴在这里就是"幸存者的呼吸"。' },
       { film: '星际穿越', year: 2014, composer: '汉斯·季默', why: '管风琴 + 大提琴齐奏 cooper 离别的主题，让"父亲"这个词具备引力。' },
@@ -66,7 +68,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '高音区一条颤音长线可以把任何画面"拉紧"，是悬疑/浪漫两端的通用钥匙。',
     caveat: '太容易"煽"。一旦旋律性过强就会把画面盖死；导演大多数时候要的是"克制的小提琴"。',
     rangeMidi: [55, 103],
-    phrase: 'violin/phrase-01.mp3',
+    phrase: 'violin-real.mp3',
     films: [
       { film: '惊魂记', year: 1960, composer: '伯纳德·赫尔曼', why: '浴室戏的尖锐 stab——小提琴最暴力的瞬间，重塑了恐怖片配乐语言。' },
       { film: '辛德勒的名单', year: 1993, composer: '约翰·威廉姆斯', why: '主题旋律由小提琴独奏走完，是"克制"和"煽情"之间最完美的平衡范例。' },
@@ -84,7 +86,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '极低音 drone 是"还没看见但已经在那里"的几乎所有恐怖/悬疑场面的底色。',
     caveat: '单独使用会让画面"塌"。永远是别人的搭档。',
     rangeMidi: [28, 60],
-    phrase: 'contrabass/phrase-01.mp3',
+    phrase: 'contrabass-real.mp3',
     films: [
       { film: '大白鲨', year: 1975, composer: '约翰·威廉姆斯', why: 'E–F 半音 ostinato，证明两个音也能成传奇主题。' },
       { film: '教父', year: 1972, composer: '尼诺·罗塔', why: '在西西里葬礼那一场，低音提琴就是棺材落地的声音。' },
@@ -101,7 +103,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '能在 4 秒之内把江南/江北的地理感建立起来。',
     caveat: '一上配乐就是"中国元素"，反而失去它本身的语言。导演要小心使用。',
     rangeMidi: [55, 91],
-    phrase: 'erhu/phrase-01.mp3',
+    phrase: 'erhu-real.mp3',
     films: [
       { film: '霸王别姬', year: 1993, composer: '赵季平', why: '京胡 + 二胡的双层叙事，把"戏中戏"做到声音里。' },
       { film: '一秒钟', year: 2020, composer: '老锣', why: '极简的二胡 phrase 处理沙漠中的人物——孤独是地理性的。' },
@@ -118,7 +120,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '俏皮、节奏推进、轻量喜剧的万金油。',
     caveat: '叙事戏中段慎用，容易把分量降下去。',
     rangeMidi: [36, 84],
-    phrase: 'pizzicato-strings/phrase-01.mp3',
+    phrase: 'pizzicato-strings-real.mp3',
     films: [
       { film: '天使爱美丽', year: 2001, composer: 'Yann Tiersen', why: '拨弦律动是这部片子的"心跳"。' },
       { film: '布达佩斯大饭店', year: 2014, composer: 'Alexandre Desplat', why: '俄罗斯民乐 + 弦乐拨奏构造 Anderson 式的玩具盒节奏。' },
@@ -137,7 +139,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '空灵、明亮、不施压。给画面留出空气感。',
     caveat: '在低音区接近无能为力——它的力气全在中高。',
     rangeMidi: [60, 96],
-    phrase: 'flute/phrase-01.mp3',
+    phrase: 'flute-real.mp3',
     films: [
       { film: '指环王', year: 2001, composer: '霍华德·肖', why: '夏尔主题中的爱尔兰笛子，把"故乡"具象化。' },
       { film: '哈利波特', year: 2001, composer: '约翰·威廉姆斯', why: '"Hedwig\'s Theme" 由低音笛起句，是儿童奇幻通往黑暗的门。' },
@@ -154,7 +156,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '人物独白时长的旋律最佳载体——它不抢戏。',
     caveat: '低音区像 saxophone 但又没那么"夜店"，使用时要确认你要的是"私语"还是"酒馆"。',
     rangeMidi: [50, 91],
-    phrase: 'clarinet/phrase-01.mp3',
+    phrase: 'clarinet-real.mp3',
     films: [
       { film: '辛德勒的名单', year: 1993, composer: '约翰·威廉姆斯', why: 'Klezmer 风的单簧管把犹太民族的悲喜同时托住。' },
       { film: '彼得与狼', year: 1936, composer: '普罗科菲耶夫', why: '猫的角色——单簧管的低音中段就是"潜行"的形状。' },
@@ -171,7 +173,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '一句独白能把场景的体温降低 2 度。',
     caveat: '一旦旋律展开太多会变得做作。给一句话，不要给一段话。',
     rangeMidi: [58, 91],
-    phrase: 'oboe/phrase-01.mp3',
+    phrase: 'oboe-real.mp3',
     films: [
       { film: '使命', year: 1986, composer: 'Ennio Morricone', why: '"Gabriel\'s Oboe" 是 oboe 在电影史上的代表作——一根管子讲完了殖民、信仰、悔过。' },
     ],
@@ -189,7 +191,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '高音区铺一条线，整支管弦乐立刻有"远方"。',
     caveat: '声压惊人，比想象的还要强。混音时给它单独留空间。',
     rangeMidi: [34, 77],
-    phrase: 'french-horn/phrase-01.mp3',
+    phrase: 'french-horn-real.mp3',
     films: [
       { film: '星球大战', year: 1977, composer: '约翰·威廉姆斯', why: '主题动机由圆号宣告——它就是 Luke 的英雄性。' },
       { film: '魔戒：双塔奇兵', year: 2002, composer: '霍华德·肖', why: '洛汗主题的圆号 + 哈丹格小提琴，是"苍凉骑士"的标准答案。' },
@@ -206,7 +208,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '军号号召、爵士独白、葬礼挽歌——它的语言谱系最广。',
     caveat: '比圆号更容易"刺人"。情绪戏要么静音，要么换弱音器。',
     rangeMidi: [54, 84],
-    phrase: 'trumpet/phrase-01.mp3',
+    phrase: 'trumpet-real.mp3',
     films: [
       { film: '红磨坊', year: 2001, composer: 'Craig Armstrong 等', why: '小号引出 "El Tango de Roxanne"——直白的欲望和嫉妒。' },
     ],
@@ -224,7 +226,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '心跳、宣告、降临。配乐结构里的"句号"。',
     caveat: '过用会显廉价。一部 90 分钟片子，timpani 高潮点不超过 5 处。',
     rangeMidi: [36, 60],
-    phrase: 'timpani/phrase-01.mp3',
+    phrase: 'timpani-real.mp3',
     films: [
       { film: '2001 太空漫游', year: 1968, composer: '理查·施特劳斯', why: '《查拉图斯特拉如是说》开场——铜管之后那一下定音鼓就是"觉醒"。' },
     ],
@@ -240,7 +242,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '战斗、仪式、攻势之前的蓄势。',
     caveat: '太大型乐器，小场面用 sub-kick 替代更克制。',
     rangeMidi: [30, 50],
-    phrase: 'taiko/phrase-01.mp3',
+    phrase: 'taiko-real.mp3',
     films: [
       { film: '最后的武士', year: 2003, composer: '汉斯·季默', why: '战前的太鼓阵列建立东方"集体意志"。' },
       { film: '阿凡达', year: 2009, composer: '詹姆斯·霍纳', why: '部落集会场景，把节奏当作"语言"。' },
@@ -257,7 +259,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '把节奏可视化。常被用来给小动物/小物件做"脚步"。',
     caveat: '过度使用立刻把片子降级成动画短片。',
     rangeMidi: [65, 96],
-    phrase: 'xylophone/phrase-01.mp3',
+    phrase: 'xylophone-real.mp3',
     films: [
       { film: '骷髅之舞 (Saint-Saëns)', year: 1874, composer: 'Saint-Saëns', why: '木琴模拟骷髅敲骨头——古典语境也能讲清这件乐器的本质。' },
     ],
@@ -275,7 +277,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '钢琴是配乐里的"中性嗓音"——什么情绪都能讲，又什么都不主张。',
     caveat: '太通用 = 太常见。要让钢琴出彩，靠的是"少而准"。',
     rangeMidi: [21, 108],
-    phrase: 'piano/phrase-01.mp3',
+    phrase: 'piano-real.mp3',
     films: [
       { film: '钢琴课', year: 1993, composer: 'Michael Nyman', why: '钢琴在这里不只是配乐，是女主的"喉咙"。' },
       { film: '美丽心灵', year: 2001, composer: 'James Horner', why: '"All Love Can Be" 主题——钢琴 + 童声的最简方程。' },
@@ -293,7 +295,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '把"魔法/天真"瞬间具象化。',
     caveat: '出现一次足够。多用就成了主题乐园。',
     rangeMidi: [60, 108],
-    phrase: 'celesta/phrase-01.mp3',
+    phrase: 'celesta-real.mp3',
     films: [
       { film: '哈利波特：魔法石', year: 2001, composer: '约翰·威廉姆斯', why: '"Hedwig\'s Theme" 的开篇就是 celesta——这件乐器从此被绑定到"魔法"。' },
     ],
@@ -309,7 +311,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '宗教感、宇宙感、绝对的体量。',
     caveat: '它是空间型乐器，需要混音里给它"教堂"的混响，否则像电子琴。',
     rangeMidi: [24, 96],
-    phrase: 'pipe-organ/phrase-01.mp3',
+    phrase: 'pipe-organ-real.mp3',
     films: [
       { film: '星际穿越', year: 2014, composer: '汉斯·季默', why: '管风琴扮演了"上帝视角"——巨型时空和孤独的父亲。' },
       { film: '幻想曲', year: 1940, composer: 'Bach 经 Stokowski 改编', why: '"D 小调托卡塔与赋格" 把管风琴的视觉化推到极致。' },
@@ -328,7 +330,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '快速分解和弦能瞬间建立"东方"的时空。',
     caveat: '滥用会"风景明信片"。导演要的是叙事的中国，不是 stock photo 的中国。',
     rangeMidi: [48, 84],
-    phrase: 'guzheng/phrase-01.mp3',
+    phrase: 'guzheng-real.mp3',
     films: [
       { film: '英雄', year: 2002, composer: '谭盾', why: '飞雪与如月对决一场，古筝的快速轮指就是雪片。' },
     ],
@@ -344,7 +346,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '战场、刺杀、骤雨——节奏极快时它是"刀"。',
     caveat: '不是慢板乐器；要它抒情就放掉了它的优势。',
     rangeMidi: [45, 81],
-    phrase: 'pipa/phrase-01.mp3',
+    phrase: 'pipa-real.mp3',
     films: [
       { film: '十面埋伏 (传统)', year: 0, composer: '传统', why: '琵琶最古老的战场叙事——配乐史最早的"扫弦"用法。' },
       { film: '夜宴', year: 2006, composer: 'Tan Dun', why: '把琵琶的杀气放到宫廷阴谋戏里。' },
@@ -361,7 +363,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '空、远、士人感。一个泛音就能把画面"清空"。',
     caveat: '不能堆——它本身就是"独"。',
     rangeMidi: [40, 76],
-    phrase: 'guqin/phrase-01.mp3',
+    phrase: 'guqin-real.mp3',
     films: [
       { film: '一一', year: 2000, composer: '彭恺立', why: '空镜配古琴泛音——杨德昌式的"日常之外"。' },
     ],
@@ -379,7 +381,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '建立"集体的、不属于任何个体"的视角。',
     caveat: '只要一加合唱，画面就会瞬间"严肃化"——慎用。',
     rangeMidi: [48, 84],
-    phrase: 'choir/phrase-01.mp3',
+    phrase: 'choir-real.mp3',
     films: [
       { film: '角斗士', year: 2000, composer: 'Hans Zimmer & Lisa Gerrard', why: 'Lisa Gerrard 的人声 vocalise + 合唱铺底，定义了 2000 年代史诗片配乐。' },
       { film: '魔戒：王者归来', year: 2003, composer: '霍华德·肖', why: '末日山脉一场合唱压倒乐团——它就是 Sauron 的视野。' },
@@ -396,7 +398,7 @@ export const INSTRUMENTS: Instrument[] = [
     strength: '科幻、未来、抽象——任何"非自然世界"。',
     caveat: '过用会"音乐沙拉酱"——什么都涂得抹平。每场戏只该有一层 pad。',
     rangeMidi: [24, 96],
-    phrase: 'synth-pad/phrase-01.mp3',
+    phrase: 'synth-pad-real.mp3',
     films: [
       { film: '银翼杀手 2049', year: 2017, composer: 'Hans Zimmer & Benjamin Wallfisch', why: '巨型 pad + 极少旋律——这就是"未来不浪漫"的声音。' },
       { film: '降临', year: 2016, composer: 'Jóhann Jóhannsson', why: '人声拉伸成 pad，外星语言的物理对应物。' },

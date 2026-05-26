@@ -9,3 +9,5 @@ dist-ssr
 *.tsbuildinfo
 assets-cdn
 .screenshots
+__pycache__/
+*.pyc
