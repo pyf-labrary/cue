@@ -81,13 +81,18 @@ class CompositionPlayerImpl {
    * html5 audio pool when the user navigates between scenes quickly.
    */
   private warmedFor: Composition | null = null;
-  async setComposition(comp: Composition): Promise<void> {
+  async setComposition(comp: Composition, opts?: { keepPosition?: boolean }): Promise<void> {
     const wasPlaying = this.status === 'playing';
+    // keepPosition: carry the transport across the swap — used by the scene
+    // re-score A/B switch so comparing two scorings doesn't restart the scene.
+    const fromSec = opts?.keepPosition
+      ? Math.min(this.nowSec(), Math.max(0, comp.durationSec - 0.05))
+      : 0;
     this.stop();
     this.disposeHowls();
     this.comp = comp;
     this.warmedFor = null;
-    this.currentSec = 0;
+    this.currentSec = fromSec;
     this.status = 'idle';
     this.notify();
     if (wasPlaying) this.play();

@@ -1,11 +1,38 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { getScene, CONCEPT_META } from '@/data/scenes';
+import { getScene, CONCEPT_META, type Scene } from '@/data/scenes';
 import { EMOTIONS } from '@/data/emotions';
 import { getInstrument } from '@/data/instruments';
 import MultiTrackPlayer from '@/components/audio/MultiTrackPlayer';
 import { useTransportShortcuts } from '@/lib/useKeyboardShortcuts';
 import { sceneToComposition } from '@/lib/composition';
 import { encodeComposition, saveToStorage } from '@/lib/compositionShare';
+import { RESCORES, NO_SCORE_NOTES, type ScoreMode } from '@/data/rescores';
+
+/** Same picture, different score — the variant fed into the player. */
+function buildVariant(scene: Scene, mode: ScoreMode): Scene {
+  if (mode === 'original') return scene;
+  if (mode === 'none') {
+    return {
+      ...scene,
+      mxAudio: undefined,
+      tracks: { ...scene.tracks, mx: [] },
+      annotations: [],
+    };
+  }
+  const r = RESCORES[scene.slug];
+  if (!r) return scene;
+  return {
+    ...scene,
+    mxAudio: undefined,
+    tracks: {
+      mx: r.mx,
+      fx: r.fx ?? scene.tracks.fx,
+      nx: r.nx ?? scene.tracks.nx,
+    },
+    annotations: [],
+  };
+}
 
 export default function SceneDetail() {
   const { slug = '' } = useParams();
@@ -13,9 +40,13 @@ export default function SceneDetail() {
   const navigate = useNavigate();
   useTransportShortcuts();
 
+  const [mode, setMode] = useState<ScoreMode>('original');
+  useEffect(() => setMode('original'), [slug]);
+  const variant = useMemo(() => (scene ? buildVariant(scene, mode) : undefined), [scene, mode]);
+
   function openInSandbox() {
-    if (!scene) return;
-    const comp = sceneToComposition(scene);
+    if (!scene || !variant) return;
+    const comp = sceneToComposition(variant);
     // Stash to sandbox slot so even a refresh keeps it; also stuff into URL
     // so the address bar reflects what's loaded.
     saveToStorage('sandbox', comp);
@@ -128,12 +159,15 @@ export default function SceneDetail() {
             type="button"
             onClick={openInSandbox}
             className="text-[12px] px-3 py-1.5 rounded-full border border-ink-700 text-ink-300 hover:text-accent hover:border-accent transition"
-            title="复制这一场到试听台，自由增删 clip"
+            title="复制当前配法到试听台，自由增删 clip"
           >
             在试听台打开 →
           </button>
         </div>
-        <MultiTrackPlayer scene={scene} />
+
+        <RescoreSwitch scene={scene} mode={mode} onChange={setMode} />
+
+        <MultiTrackPlayer scene={variant ?? scene} />
         <p className="mt-4 text-ink-400 text-sm max-w-[640px] leading-relaxed">
           这段配乐是在浏览器里用我们图鉴中的乐器合成出来的——不是从原片剪的。所以你可以拆开听 MX
           只剩 NX、可以单 solo FX 听清每一次 stinger，是配乐教学场景，不是版权片段。
@@ -171,4 +205,70 @@ function fmt(s: number): string {
   const m = Math.floor(s / 60);
   const sec = Math.floor(s % 60);
   return `${m}:${String(sec).padStart(2, '0')}`;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Re-score switch — same picture, three scores                              */
+/* -------------------------------------------------------------------------- */
+
+function RescoreSwitch({
+  scene,
+  mode,
+  onChange,
+}: {
+  scene: Scene;
+  mode: ScoreMode;
+  onChange: (m: ScoreMode) => void;
+}) {
+  const rescore = RESCORES[scene.slug];
+  if (!rescore) return null;
+
+  const origEmotion = EMOTIONS.find((e) => e.id === scene.emotions[0])!;
+  const altEmotion = EMOTIONS.find((e) => e.id === rescore.emotion)!;
+
+  const options: Array<{ id: ScoreMode; label: string; sub: string; hue: string }> = [
+    { id: 'original', label: '原配', sub: origEmotion.label, hue: origEmotion.hue },
+    { id: 'alt', label: rescore.label, sub: altEmotion.label, hue: altEmotion.hue },
+    { id: 'none', label: '无配乐', sub: '只剩画面', hue: '#8A8A95' },
+  ];
+  const active = options.find((o) => o.id === mode)!;
+  const note =
+    mode === 'original'
+      ? '这是原配的思路。点上面任何一个换配法——画面与播放进度不动，只换音乐。同一场戏会变成另一个故事。'
+      : mode === 'alt'
+        ? rescore.note
+        : NO_SCORE_NOTES[scene.slug] ?? '没有音乐的版本。';
+
+  return (
+    <div className="mb-4 rounded-2xl border border-ink-700 bg-ink-800/40 px-5 py-4">
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <span className="h-eyebrow mr-2 text-ink-400">换一种配法</span>
+        {options.map((o) => {
+          const isActive = o.id === mode;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => onChange(o.id)}
+              className="px-3.5 py-1.5 rounded-full text-[13px] border transition"
+              style={{
+                color: isActive ? '#0F0F12' : o.hue,
+                background: isActive ? o.hue : 'transparent',
+                borderColor: isActive ? o.hue : `${o.hue}66`,
+              }}
+            >
+              {o.label}
+              <span className="ml-1.5 text-[10px] opacity-70 font-mono">{o.sub}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p
+        className="text-[13px] leading-relaxed text-ink-200 border-l-2 pl-3"
+        style={{ borderColor: active.hue }}
+      >
+        {note}
+      </p>
+    </div>
+  );
 }

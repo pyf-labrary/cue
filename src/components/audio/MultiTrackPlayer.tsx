@@ -38,14 +38,18 @@ export default function MultiTrackPlayer({ scene }: { scene: Scene }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   usePlayheadVar(rootRef, () => (dur > 0 ? Math.max(0, Math.min(1, compositionPlayer.nowSec() / dur)) : 0));
 
-  // Load scene composition on mount / scene change.
+  // Load scene composition on mount / scene change. Re-score variants share
+  // the slug — keep the transport position so A/B comparison doesn't restart.
+  // NOTE: stop() must live in an unmount-only effect; as a cleanup of this
+  // one it would run before each reload and zero the position we preserve.
+  const lastSlug = useRef<string | null>(null);
   useEffect(() => {
+    const keepPosition = lastSlug.current === scene.slug;
+    lastSlug.current = scene.slug;
     setComp(baseComp);
-    void compositionPlayer.setComposition(baseComp);
-    return () => {
-      compositionPlayer.stop();
-    };
-  }, [baseComp]);
+    void compositionPlayer.setComposition(baseComp, { keepPosition });
+  }, [baseComp, scene.slug]);
+  useEffect(() => () => compositionPlayer.stop(), []);
   // Apply mute/solo edits live.
   useEffect(() => {
     compositionPlayer.patchComposition(comp);
