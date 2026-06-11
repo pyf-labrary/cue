@@ -5,8 +5,12 @@
  * exclusively while mounted. Switching beats stops + resets it.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { getLesson, LESSONS, type Lesson, type LessonBeat } from '@/data/lessons';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import { getLesson, LESSONS, type Lesson, type LessonBeat, type QuizQuestion } from '@/data/lessons';
+import { markLessonDone } from '@/lib/lessonProgress';
+import { TRACK_META, type TrackId } from '@/data/scenes';
+import { getInstrument } from '@/data/instruments';
+import { EMOTIONS } from '@/data/emotions';
 import {
   type Composition,
   type ClipNote,
@@ -23,7 +27,9 @@ import {
   saveToStorage,
   readShareFromHash,
   stripShareFromHash,
+  encodeComposition,
 } from '@/lib/compositionShare';
+import ExportControls from '@/components/sandbox/ExportControls';
 import TrackEditor from '@/components/sandbox/TrackEditor';
 import LoopPalette from '@/components/sandbox/LoopPalette';
 import ShareControls from '@/components/sandbox/ShareControls';
@@ -43,6 +49,12 @@ export default function LessonPage() {
     setStepIdx(0);
     return () => compositionPlayer.dispose();
   }, [lesson?.id]);
+
+  // Reaching the last step marks the lesson complete (shown on the index).
+  const atLastStep = !!lesson && Math.min(stepIdx, lesson.beats.length - 1) === lesson.beats.length - 1;
+  useEffect(() => {
+    if (lesson && atLastStep) markLessonDone(lesson.id);
+  }, [lesson, atLastStep]);
 
   if (!lesson) {
     return (
@@ -162,7 +174,7 @@ function BeatView({ lesson, beat }: { lesson: Lesson; beat: LessonBeat }) {
     case 'text':
       return <TextBeat heading={beat.heading} body={beat.body} />;
     case 'mix':
-      return <MixBeat key={`${lesson.id}-mix`} body={beat.body} composition={beat.composition} goal={beat.goal} />;
+      return <MixBeat key={`${lesson.id}-mix`} body={beat.body} composition={beat.composition} goal={beat.goal} soloChecklist={beat.soloChecklist} />;
     case 'inst-swap':
       return (
         <InstSwapBeat
@@ -197,7 +209,126 @@ function BeatView({ lesson, beat }: { lesson: Lesson; beat: LessonBeat }) {
       );
     case 'sandbox':
       return <SandboxBeat key={`${lesson.id}-sb`} body={beat.body} starter={beat.starter} />;
+    case 'quiz':
+      return <QuizBeat key={`${lesson.id}-quiz`} body={beat.body} questions={beat.questions} />;
+    case 'outro':
+      return <OutroBeat key={`${lesson.id}-outro`} body={beat.body} links={beat.links} />;
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Quiz beat — untimed, explain on answer                                    */
+/* -------------------------------------------------------------------------- */
+
+function QuizBeat({ body, questions }: { body?: string; questions: QuizQuestion[] }) {
+  const [picked, setPicked] = useState<Record<number, number>>({});
+  const answered = Object.keys(picked).length;
+  const correct = questions.filter((q, i) => picked[i] === q.answer).length;
+
+  return (
+    <div className="space-y-5">
+      {body && <p className="text-ink-200 leading-relaxed">{body}</p>}
+      {questions.map((q, qi) => {
+        const sel = picked[qi];
+        const done = sel !== undefined;
+        return (
+          <div key={qi} className="rounded-2xl border border-ink-700 bg-ink-800/40 px-6 py-5">
+            <div className="flex items-baseline gap-3 mb-4">
+              <span className="font-mono text-accent text-sm">Q{qi + 1}</span>
+              <span className="text-ink-100 leading-relaxed">{q.q}</span>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-2">
+              {q.options.map((opt, oi) => {
+                const isAnswer = oi === q.answer;
+                const isSel = sel === oi;
+                let color = 'rgba(255,255,255,0.12)';
+                let text = '#B8B8C2';
+                if (done && isAnswer) { color = '#6BC9A6'; text = '#6BC9A6'; }
+                else if (done && isSel) { color = '#D86B6B'; text = '#D86B6B'; }
+                return (
+                  <button
+                    key={oi}
+                    type="button"
+                    disabled={done}
+                    onClick={() => setPicked((p) => ({ ...p, [qi]: oi }))}
+                    className="text-left px-4 py-2.5 rounded-xl border text-sm transition disabled:cursor-default"
+                    style={{ borderColor: color, color: text }}
+                  >
+                    <span className="font-mono text-[10px] mr-2 opacity-60">{String.fromCharCode(65 + oi)}</span>
+                    {opt}
+                    {done && isAnswer && <span className="ml-2">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+            {done && (
+              <div
+                className="mt-4 text-[13px] leading-relaxed text-ink-200 border-l-2 pl-3"
+                style={{ borderColor: sel === q.answer ? '#6BC9A6' : '#D86B6B' }}
+              >
+                <span className="mr-2" style={{ color: sel === q.answer ? '#6BC9A6' : '#D86B6B' }}>
+                  {sel === q.answer ? '答对了。' : '不对——'}
+                </span>
+                {q.explain}
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {answered === questions.length && (
+        <div className="text-center text-sm text-ink-300">
+          {correct === questions.length
+            ? `全对（${correct}/${questions.length}）。耳朵已上线。`
+            : `答对 ${correct}/${questions.length}。看完解释就够了——这不是考试。`}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Outro beat — "where to go from here"                                      */
+/* -------------------------------------------------------------------------- */
+
+function OutroBeat({
+  body,
+  links,
+}: {
+  body: string;
+  links: Array<{ to: string; label: string; note: string; external?: boolean }>;
+}) {
+  return (
+    <div className="space-y-5">
+      <p className="text-ink-200 leading-relaxed whitespace-pre-line border-l-2 border-accent/40 pl-4">{body}</p>
+      <div className="grid sm:grid-cols-2 gap-3">
+        {links.map((l) =>
+          l.external ? (
+            <a
+              key={l.to}
+              href={l.to}
+              target="_blank"
+              rel="noreferrer"
+              className="block px-5 py-4 rounded-2xl border border-ink-700 hover:border-accent/50 transition group"
+            >
+              <div className="font-serif text-lg text-ink-100 group-hover:text-accent transition">
+                {l.label} <span className="text-ink-500 text-xs align-super">↗</span>
+              </div>
+              <div className="text-[13px] text-ink-400 mt-1 leading-relaxed">{l.note}</div>
+            </a>
+          ) : (
+            <Link
+              key={l.to}
+              to={l.to}
+              className="block px-5 py-4 rounded-2xl border border-ink-700 hover:border-accent/50 transition group"
+            >
+              <div className="font-serif text-lg text-ink-100 group-hover:text-accent transition">{l.label} →</div>
+              <div className="text-[13px] text-ink-400 mt-1 leading-relaxed">{l.note}</div>
+            </Link>
+          ),
+        )}
+      </div>
+    </div>
+  );
 }
 
 function TextBeat({ heading, body }: { heading?: string; body: string }) {
@@ -213,7 +344,17 @@ function TextBeat({ heading, body }: { heading?: string; body: string }) {
 /*  Mix beat — TrackEditor + transport                                        */
 /* -------------------------------------------------------------------------- */
 
-function MixBeat({ body, composition, goal }: { body: string; composition: Composition; goal?: string }) {
+function MixBeat({
+  body,
+  composition,
+  goal,
+  soloChecklist,
+}: {
+  body: string;
+  composition: Composition;
+  goal?: string;
+  soloChecklist?: boolean;
+}) {
   const [comp, setComp] = useState<Composition>(composition);
   const state = useCompositionPlayer();
   const playing = state.status === 'playing';
@@ -229,10 +370,43 @@ function MixBeat({ body, composition, goal }: { body: string; composition: Compo
     compositionPlayer.patchComposition(comp);
   }, [comp]);
 
+  // Solo checklist — light up each lane badge once the user has soloed it.
+  const [soloed, setSoloed] = useState<Set<TrackId>>(() => new Set());
+  useEffect(() => {
+    if (comp.laneSolo) {
+      const lane = comp.laneSolo;
+      setSoloed((s) => (s.has(lane) ? s : new Set(s).add(lane)));
+    }
+  }, [comp.laneSolo]);
+  const allLanes: TrackId[] = ['dx', 'mx', 'fx', 'nx', 'vo'];
+  const allDone = allLanes.every((l) => soloed.has(l));
+
   return (
     <div className="space-y-4">
       <p className="text-ink-200 leading-relaxed">{body}</p>
       {goal && <div className="text-[12px] text-accent border-l-2 border-accent pl-3">目标 · {goal}</div>}
+      {soloChecklist && (
+        <div className="flex flex-wrap items-center gap-2">
+          {allLanes.map((l) => {
+            const done = soloed.has(l);
+            const meta = TRACK_META[l];
+            return (
+              <span
+                key={l}
+                className="font-mono text-[10px] px-2 py-1 rounded-full border transition"
+                style={{
+                  color: done ? meta.color : 'rgba(184,184,194,0.4)',
+                  borderColor: done ? meta.color : 'rgba(255,255,255,0.1)',
+                  background: done ? `${meta.color}1a` : 'transparent',
+                }}
+              >
+                {done ? '✓ ' : ''}{meta.en} 已单听
+              </span>
+            );
+          })}
+          {allDone && <span className="text-[12px] text-accent">五条都听过了——你已经会拆一场戏了。</span>}
+        </div>
+      )}
       <Transport playing={playing} state={state} comp={comp} />
       <TrackEditor
         composition={comp}
@@ -241,6 +415,28 @@ function MixBeat({ body, composition, goal }: { body: string; composition: Compo
         onSeek={(s) => compositionPlayer.seek(s)}
         editable={false}
       />
+      <TakeToSandbox getComp={() => comp} />
+    </div>
+  );
+}
+
+/** "Open in Playground" — carry the current example state into the sandbox. */
+function TakeToSandbox({ getComp }: { getComp: () => Composition }) {
+  const navigate = useNavigate();
+  return (
+    <div className="text-right">
+      <button
+        type="button"
+        onClick={() => {
+          const comp = getComp();
+          saveToStorage('sandbox', comp);
+          navigate(`/sandbox?s=${encodeComposition(comp)}`);
+        }}
+        className="text-[12px] px-3 py-1.5 rounded-full border border-ink-700 text-ink-400 hover:text-accent hover:border-accent transition"
+        title="把当前状态原样带进完整试听台，继续自由编辑"
+      >
+        带着这个例子去试听台 →
+      </button>
     </div>
   );
 }
@@ -306,26 +502,40 @@ function InstSwapBeat({
     <div className="space-y-4">
       <p className="text-ink-200 leading-relaxed">{body}</p>
       <div className="flex flex-wrap gap-2">
-        {insts.map((id) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setActive(id)}
-            className={`px-3 py-1.5 rounded-full text-sm border transition ${
-              active === id
-                ? 'bg-accent text-ink-900 border-accent'
-                : 'border-ink-700 text-ink-200 hover:border-accent/50'
-            }`}
-          >
-            {instLabel(id)}
-          </button>
-        ))}
+        {insts.map((id) => {
+          const emo = dominantEmotion(id);
+          const isActive = active === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setActive(id)}
+              className="px-3 py-1.5 rounded-full text-sm border transition"
+              style={{
+                color: isActive ? '#0F0F12' : emo?.hue ?? '#E3E3EA',
+                background: isActive ? emo?.hue ?? '#E6C36B' : 'transparent',
+                borderColor: isActive ? emo?.hue ?? '#E6C36B' : `${emo?.hue ?? '#5A5A66'}55`,
+              }}
+            >
+              {instLabel(id)}
+              {emo && <span className="ml-1.5 text-[10px] opacity-75">{emo.label}</span>}
+            </button>
+          );
+        })}
       </div>
       <Transport playing={playing} state={state} comp={compFor} />
-      <div className="rounded-2xl border border-ink-700 bg-ink-800/40 px-6 py-8">
+      <div
+        className="rounded-2xl border bg-ink-800/40 px-6 py-8 transition-colors duration-300"
+        style={{ borderColor: `${dominantEmotion(active)?.hue ?? '#3A3A45'}55` }}
+      >
         <div className="text-center">
           <div className="h-eyebrow text-ink-400">现在演的是</div>
           <div className="h-display text-3xl text-ink-100 mt-2">{instLabel(active)}</div>
+          {dominantEmotion(active) && (
+            <div className="text-sm mt-2" style={{ color: dominantEmotion(active)!.hue }}>
+              最擅长 · {dominantEmotion(active)!.label}
+            </div>
+          )}
           <div className="font-mono text-xs text-ink-500 mt-2 tabular-nums">
             {fmt(state.currentSec)} / {fmt(compFor.durationSec)}
           </div>
@@ -333,6 +543,18 @@ function InstSwapBeat({
       </div>
     </div>
   );
+}
+
+/** The instrument's strongest emotion from its atlas radar — drives coloring. */
+function dominantEmotion(instId: string) {
+  const inst = getInstrument(instId);
+  if (!inst) return null;
+  let best: { id: string; v: number } | null = null;
+  for (const [eid, v] of Object.entries(inst.emotionRadar)) {
+    if (v != null && (!best || v > best.v)) best = { id: eid, v };
+  }
+  if (!best) return null;
+  return EMOTIONS.find((e) => e.id === best!.id) ?? null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -491,6 +713,7 @@ function HitPointBeat({ body, composition, hits }: { body: string; composition: 
         onSeek={(s) => compositionPlayer.seek(s)}
         editable={false}
       />
+      <TakeToSandbox getComp={() => comp} />
     </div>
   );
 }
@@ -571,6 +794,12 @@ function SandboxBeat({ body, starter }: { body: string; starter: Composition }) 
           onChangeComposition={setComp}
           onSeek={(s) => compositionPlayer.seek(s)}
         />
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/30 bg-accent/5 px-5 py-4">
+        <div className="text-[13px] text-ink-200">
+          <span className="text-accent">毕业作品</span> · 拼好之后导出成音频文件，它就是你的第一条 cue。
+        </div>
+        <ExportControls durationSec={comp.durationSec} getVideoEl={() => null} slug="lesson-l5" />
       </div>
     </div>
   );

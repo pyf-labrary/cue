@@ -24,6 +24,18 @@ export type LessonBeat =
       composition: Composition;
       /** Suggested objective for the user — UI shows it as a hint. */
       goal?: string;
+      /** Show the "solo every lane" checklist (lesson 1). */
+      soloChecklist?: boolean;
+    }
+  | {
+      kind: 'quiz';
+      body?: string;
+      questions: QuizQuestion[];
+    }
+  | {
+      kind: 'outro';
+      body: string;
+      links: Array<{ to: string; label: string; note: string; external?: boolean }>;
     }
   | {
       kind: 'inst-swap';
@@ -60,6 +72,14 @@ export type LessonBeat =
       /** Starter composition; user can edit and play freely. */
       starter: Composition;
     };
+
+export interface QuizQuestion {
+  q: string;
+  options: string[];
+  /** Index into options. */
+  answer: number;
+  explain: string;
+}
 
 export interface Lesson {
   id: string;
@@ -161,6 +181,7 @@ const lesson1: Lesson = {
         + '注意 mute 之后画面"消失"了什么——这就是这条轨道在干什么。',
       goal: '至少 solo 听一遍每一条轨道。',
       composition: l1Composition(),
+      soloChecklist: true,
     },
     {
       kind: 'text',
@@ -178,6 +199,30 @@ const lesson1: Lesson = {
         + ' 配乐的核心控制不是"开或关"，是它在背景里有多大声。',
       goal: '试试把 MX 推到不同音量，体会"戏剧感"的变化。',
       composition: l1Composition(),
+    },
+    {
+      kind: 'quiz',
+      body: '三道小题，确认你真的把五条轨道装进耳朵了。不计时，答错看解释就行。',
+      questions: [
+        {
+          q: '戏里突然一声门被撞开的巨响，属于哪条轨道？',
+          options: ['DX 对白', 'MX 音乐', 'FX 音效', 'NX 环境'],
+          answer: 2,
+          explain: '瞬时的"事件声"是 FX；持续的"空间底纹"才是 NX。一秒之内来去的，基本都归 FX。',
+        },
+        {
+          q: '把哪条轨道 mute 之后，画面最像"默剧"？',
+          options: ['MX', 'DX', 'NX', 'VO'],
+          answer: 1,
+          explain: '人的声音一消失，整场戏立刻塌掉——这就是为什么 DX 是五条里最不能被压过的。',
+        },
+        {
+          q: '导演说"背景音乐小一点，压到对白了"，他在说哪条？',
+          options: ['NX', 'FX', 'VO', 'MX'],
+          answer: 3,
+          explain: 'MX = music。导演调的就是配乐和对白的相对音量——你在上一步亲手推过的那条。',
+        },
+      ],
     },
   ],
 };
@@ -231,6 +276,29 @@ const lesson2: Lesson = {
         + '\n· 大提琴给你"重压"（中低频 + 持续，最贴人声）。'
         + '\n· 二胡给你"含哀"（频谱里有人声共振峰，听起来就是在哭）。'
         + '\n\n这就是"音色 = 情绪载体"——你选错乐器，旋律再好也救不回来。',
+    },
+    {
+      kind: 'quiz',
+      questions: [
+        {
+          q: '想让一段旋律听起来"在哭"，最稳的选择是？',
+          options: ['小号', '木琴', '二胡', '长笛'],
+          answer: 2,
+          explain: '二胡的频谱里有接近人声的共振峰，天然带"含哀"。这也是它在国产剧里被用滥的原因——但好用是真好用。',
+        },
+        {
+          q: '葬礼戏需要一段庄重的独白式旋律，首选？',
+          options: ['小号', '钢片琴', '木琴', '合成 Pad'],
+          answer: 0,
+          explain: '铜管的"独白"自带仪式重量——《教父》的西西里哀歌就是小号。钢片琴和木琴是 staccato 质感，一上来庄重感就碎了。',
+        },
+        {
+          q: '为什么说"选乐器比写旋律先"？',
+          options: ['因为乐器决定预算', '因为同一段旋律换乐器，讲的故事就整个变了', '因为旋律可以随便写', '因为乐手比作曲家贵'],
+          answer: 1,
+          explain: '你刚才亲耳验证过：同一段上行回落，小号是葬礼、长笛是晨雾、钢琴是独白。音色先决定"这是什么戏"，旋律才决定细节。',
+        },
+      ],
     },
   ],
 };
@@ -325,6 +393,29 @@ const lesson3: Lesson = {
         + '\n· Source 给你真实感、低成本、文化标签（一首土耳其马卡姆告诉你这是伊斯坦布尔）。'
         + '\n· Hybrid 是高级手法——观众会觉得"这一刻很怪"，但说不出哪里怪。这正是导演想要的。'
         + '\n\n判断技巧：问自己"如果这场戏的演员可以站起来去 mute 这段音乐，他们能办到吗？"——能，是 source；不能，是 under-score。',
+    },
+    {
+      kind: 'quiz',
+      questions: [
+        {
+          q: '酒吧戏里，角色伸手把点唱机关了，音乐停了。刚才那段音乐是？',
+          options: ['under-score', 'source', 'hybrid', 'VO'],
+          answer: 1,
+          explain: '角色能控制 = 戏内来源 = source。这也是判断技巧的字面用法。',
+        },
+        {
+          q: '观众听得见、角色听不见的音乐是？',
+          options: ['source', 'hybrid', 'under-score', '环境声'],
+          answer: 2,
+          explain: 'under-score 是导演给观众的"私房话"，戏里的人对它毫无察觉。你做的 BGM 几乎都是它。',
+        },
+        {
+          q: '一段留声机的音乐越铺越大，最后变成整个乐队把戏推上高潮——这是？',
+          options: ['hybrid', 'source', 'under-score', 'stinger'],
+          answer: 0,
+          explain: 'source 与 under-score 的故意切换就是 hybrid。观众这一刻和角色"脱钩"，会觉得很怪但说不出哪里怪——导演要的就是这个。',
+        },
+      ],
     },
   ],
 };
@@ -435,6 +526,29 @@ const lesson4: Lesson = {
         + '\n\n现代流水线里，作曲家用 Logic / Cubase / Pro Tools 的"hit point map"功能直接看到画面的剪辑切点。Hans Zimmer 的工作室甚至有屏墙同步播放剪辑给乐手看，让他们能"看着画面演"。'
         + '\n\n你做短视频，也是一样的逻辑：先剪辑、标卡点，再选音效或合成节拍对齐到卡点。倒过来做几乎一定别扭。',
     },
+    {
+      kind: 'quiz',
+      questions: [
+        {
+          q: 'hit-point 指的是？',
+          options: ['音乐最响的一拍', '音乐落点与画面剪切/动作同时发生的那一拍', '每小节的第一拍', '音效轨的任意一击'],
+          answer: 1,
+          explain: '关键词是"同时"。单独的音乐重拍不是 hit-point，必须和画面事件咬合，观众才会被"踢一脚"。',
+        },
+        {
+          q: '正确的工作顺序是？',
+          options: ['先写音乐，再按音乐剪', '先剪辑并标出卡点，再让音乐对齐', '音乐和剪辑各做各的', '先录音效再剪辑'],
+          answer: 1,
+          explain: '作曲家拿 lock cut 算时间码写音乐。倒过来"按歌剪"只在 MV 里成立——叙事片里画面节奏永远优先。',
+        },
+        {
+          q: 'stinger 最典型的用途是？',
+          options: ['铺整场戏的底', '标记片头字幕', '惊吓或强调某个瞬间', '替代对白'],
+          answer: 2,
+          explain: 'stinger 是一秒内炸开又消失的瞬时音响——恐怖片 jump scare、悬疑片揭晓时刻的标配。铺底那是 drone 的活。',
+        },
+      ],
+    },
   ],
 };
 
@@ -478,11 +592,18 @@ const lesson5: Lesson = {
       starter: l5Starter(),
     },
     {
-      kind: 'text',
-      heading: '继续怎么玩',
+      kind: 'outro',
       body:
-        '完整版的 sandbox 在 /sandbox——更多预设、更多乐器、更长时长。'
-        + '\n\n下一步：找一段你拍过的 30 秒视频片段，把这套思维方式带回去。再过 3 个月你会发现自己改配乐的速度比写脚本还快。',
+        '五课结束。你现在会：拆五轨、按情绪选乐器、分辨三种配乐手法、对齐剪辑卡点、拼出自己的 under-score。'
+        + '\n\n这已经超过绝大多数"会找 BGM"的创作者了。接下来去哪，取决于你想走多深：',
+      links: [
+        { to: '/sandbox', label: '完整试听台', note: '更多预设、更长时长、视频对轨、音频导出——把刚才的作品继续做完。' },
+        { to: '/scenes', label: '场景拆解 · 换配法', note: '五个影史场景，每个都能一键换成另一种配法——验证你这五课的耳朵。' },
+        { to: '/atlas', label: '乐器图鉴', note: '20 件乐器的情绪雷达和影史用例，下次选乐器前来查一眼。' },
+        { to: '/glossary', label: '术语手册', note: '41 条配乐黑话，跟作曲家/混音师沟通时不再露怯。' },
+        { to: 'https://learningmusic.ableton.com/zh-Hans/', label: 'Ableton Learning Music（中文）', note: '想从"选音乐"进到"写音乐"，这是全网最好的免费下一站。', external: true },
+        { to: 'https://www.reaper.fm/', label: '上真 DAW：REAPER', note: '60 天全功能试用、个人证书便宜；剪映/GarageBand 也够起步。从给自己的视频配乐开始。', external: true },
+      ],
     },
   ],
 };

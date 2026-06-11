@@ -1,11 +1,15 @@
 /**
  * Lessons index — the 5 entry tiles.
  */
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LESSONS } from '@/data/lessons';
 import { LaneStripes } from '@/components/visual/Decorations';
+import { getProgress } from '@/lib/lessonProgress';
 
 export default function Lessons() {
+  const [progress] = useState(() => getProgress());
+  const doneCount = LESSONS.filter((l) => progress[l.id]).length;
   return (
     <div className="px-6 lg:px-10 py-10">
       <div className="max-w-5xl mx-auto">
@@ -17,6 +21,12 @@ export default function Lessons() {
               10–15 分钟一节，全部互动——没有阅读理解，只有"听 → 试 → 听"。
               从五轨拆解到你的第一段配乐，五个台阶。建议按顺序。
             </p>
+            {doneCount > 0 && (
+              <div className="mt-3 font-mono text-xs text-accent">
+                已完成 {doneCount} / {LESSONS.length}
+                {doneCount === LESSONS.length && ' · 全部毕业'}
+              </div>
+            )}
           </div>
           <LaneStripes height={5} className="hidden md:flex w-full opacity-70" />
         </header>
@@ -40,7 +50,7 @@ export default function Lessons() {
                   {String(l.num).padStart(2, '0')}
                 </span>
                 <span className="absolute top-3 right-4 font-mono text-[10px] text-ink-100/70 tracking-widest">
-                  约 {l.estMin} 分钟
+                  {progress[l.id] ? <span className="text-[#6BC9A6]">✓ 已完成</span> : `约 ${l.estMin} 分钟`}
                 </span>
               </div>
               <div className="px-5 py-4">
