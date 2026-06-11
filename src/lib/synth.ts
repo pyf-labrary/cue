@@ -46,6 +46,12 @@ interface SamplerDef {
   urls: Record<string, string>;
   release?: number;
   gain?: number;
+  /** Stereo seating, -1..1 — orchestral stage layout so the mix has width. */
+  pan?: number;
+  /** Reverb send 0..1 — depth on the stage (percussion dry, choir far). */
+  verb?: number;
+  /** Optional static EQ stages to de-cheapen surrogate samples. */
+  eq?: () => Tone.ToneAudioNode[];
   /** If true, this entry borrows samples from another instrument family. */
   surrogate?: boolean;
 }
@@ -54,6 +60,8 @@ interface SynthRecipe {
   build: () => Tone.PolySynth | Tone.MembraneSynth | Tone.PluckSynth | Tone.FMSynth | Tone.AMSynth;
   chain?: () => Tone.ToneAudioNode[];
   gain?: number;
+  pan?: number;
+  verb?: number;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -62,6 +70,7 @@ interface SynthRecipe {
 
 let started = false;
 let fxIn: Tone.Gain | null = null;
+let reverbIn: Tone.Gain | null = null;
 let activeSources: Array<Tone.ToneAudioNode> = [];
 let toneAnalyser: Tone.Analyser | null = null;
 
@@ -76,24 +85,30 @@ export async function ensureAudioStarted(): Promise<void> {
 let toneRecordDest: MediaStreamAudioDestinationNode | null = null;
 let toneRecordGain: Tone.Gain | null = null;
 
+/**
+ * Send/return bus. Instruments feed a dry bus AND a per-instrument reverb
+ * send (depth = stage distance), instead of one global wet knob — percussion
+ * stays punchy up front while choir/organ sit back in the hall.
+ */
 function buildFxBus(): void {
   if (fxIn) return;
   const t = T();
   const limiter = new t.Limiter(-3).toDestination();
-  const reverb = new t.Reverb({ decay: 3.0, preDelay: 0.025, wet: 0.28 }).connect(limiter);
-  fxIn = new t.Gain(0.85).connect(reverb);
-  fxIn.connect(limiter); // also dry to preserve transients
-  // FFT analyser tap — pre-limiter so we see raw synth dynamics. 128 bins
-  // → ~172 Hz/bin at 44.1k, enough low-frequency resolution for bass content.
+  const master = new t.Gain(1).connect(limiter);
+  const reverb = new t.Reverb({ decay: 2.7, preDelay: 0.035, wet: 1 }).connect(master); // full-wet return
+  reverbIn = new t.Gain(0.9).connect(reverb);
+  fxIn = new t.Gain(0.85).connect(master); // dry bus
+  // FFT analyser tap — post-mix pre-limiter so the spectrum shows the real
+  // dry+verb sum. 128 bins → ~172 Hz/bin at 44.1k.
   toneAnalyser = new t.Analyser('fft', 128);
-  fxIn.connect(toneAnalyser);
-  // Parallel recording bus — taps the same signal as the limiter so a
-  // MediaRecorder elsewhere can capture audio without affecting playback.
+  master.connect(toneAnalyser);
+  // Parallel recording bus — taps the full mix (incl. reverb) pre-limiter so
+  // exports sound like playback, not a dry stem.
   const rawCtx = (t.context as unknown as { rawContext?: BaseAudioContext }).rawContext as AudioContext | undefined;
   const ctxForRec = rawCtx ?? (t.context as unknown as AudioContext);
   toneRecordDest = ctxForRec.createMediaStreamDestination();
   toneRecordGain = new t.Gain(1);
-  fxIn.connect(toneRecordGain);
+  master.connect(toneRecordGain);
   toneRecordGain.connect(toneRecordDest);
 }
 
@@ -130,63 +145,98 @@ const SAMPLE_BASE = `${import.meta.env.BASE_URL}samples`;
 
 /** All URLs below have been HTTP-200 verified against the source. */
 const SAMPLERS: Record<string, SamplerDef> = {
-  /* --- Western orchestral (real samples) ---------------------------------- */
+  /* --- Western orchestral (real samples) ----------------------------------
+   * pan = orchestral seating (firsts left, celli/basses right, horns left-rear)
+   * verb = stage depth (strings/winds mid, brass/organ/choir far, perc near)
+   * ----------------------------------------------------------------------- */
   cello: {
     folder: 'cello',
     urls: { 'C2': 'C2.mp3', 'C3': 'C3.mp3', 'C4': 'C4.mp3', 'A2': 'A2.mp3', 'A3': 'A3.mp3', 'E3': 'E3.mp3' },
     gain: 0.65,
+    pan: 0.28, verb: 0.5,
   },
   violin: {
     folder: 'violin',
     urls: { 'A3': 'A3.mp3', 'A4': 'A4.mp3', 'A5': 'A5.mp3', 'C5': 'C5.mp3', 'E5': 'E5.mp3', 'G4': 'G4.mp3' },
     gain: 0.55,
+    pan: -0.32, verb: 0.5,
   },
   contrabass: {
     folder: 'contrabass',
     urls: { 'C2': 'C2.mp3', 'D2': 'D2.mp3', 'E2': 'E2.mp3', 'A2': 'A2.mp3', 'E3': 'E3.mp3' },
     gain: 0.65,
+    pan: 0.42, verb: 0.45,
   },
   flute: {
     folder: 'flute',
     urls: { 'A4': 'A4.mp3', 'C5': 'C5.mp3', 'E5': 'E5.mp3', 'A5': 'A5.mp3', 'C6': 'C6.mp3' },
     gain: 0.55,
+    pan: -0.1, verb: 0.45,
   },
   clarinet: {
     folder: 'clarinet',
     /** A3 is 404 on this host — use As3 (Bb3) as the lowest anchor. */
     urls: { 'A#3': 'As3.mp3', 'D4': 'D4.mp3', 'F4': 'F4.mp3', 'D5': 'D5.mp3', 'F5': 'F5.mp3' },
     gain: 0.6,
+    pan: 0.12, verb: 0.45,
   },
   oboe: {
     folder: 'bassoon', // surrogate: oboe samples missing; bassoon is the other double-reed
     urls: { 'C3': 'C3.mp3', 'G3': 'G3.mp3', 'A3': 'A3.mp3', 'C4': 'C4.mp3', 'E4': 'E4.mp3', 'G4': 'G4.mp3', 'C5': 'C5.mp3' },
     gain: 0.55,
+    pan: -0.06, verb: 0.45,
     surrogate: true,
   },
   'french-horn': {
     folder: 'french-horn',
     urls: { 'C2': 'C2.mp3', 'D3': 'D3.mp3', 'F3': 'F3.mp3', 'A3': 'A3.mp3', 'C4': 'C4.mp3' },
     gain: 0.6,
+    pan: -0.24, verb: 0.55,
   },
   trumpet: {
     folder: 'trumpet',
     urls: { 'C4': 'C4.mp3', 'D#4': 'Ds4.mp3', 'F4': 'F4.mp3', 'G4': 'G4.mp3', 'D5': 'D5.mp3', 'F5': 'F5.mp3', 'A5': 'A5.mp3' },
     gain: 0.45,
+    pan: 0.18, verb: 0.45,
   },
   piano: {
     folder: 'piano',
     urls: { 'C2': 'C2.mp3', 'C3': 'C3.mp3', 'C4': 'C4.mp3', 'F4': 'F4.mp3', 'A4': 'A4.mp3', 'C5': 'C5.mp3' },
     gain: 0.65,
+    pan: -0.05, verb: 0.3,
   },
   xylophone: {
     folder: 'xylophone',
     urls: { 'G4': 'G4.mp3', 'C5': 'C5.mp3', 'G5': 'G5.mp3', 'C6': 'C6.mp3', 'G6': 'G6.mp3', 'C7': 'C7.mp3' },
     gain: 0.5,
+    pan: -0.16, verb: 0.35,
   },
   'pipe-organ': {
     folder: 'organ',
     urls: { 'C2': 'C2.mp3', 'A2': 'A2.mp3', 'C3': 'C3.mp3', 'A3': 'A3.mp3', 'C4': 'C4.mp3', 'A4': 'A4.mp3', 'C5': 'C5.mp3' },
     gain: 0.45,
+    pan: 0, verb: 0.6,
+  },
+
+  /* --- Real percussion (VSCO-2-CE, CC0) -----------------------------------
+   * Replaces the old MembraneSynth recipes — sine-membrane timpani was the
+   * single fakest sound on the site. Drum pitch centers from the VCSL sfz:
+   * F#2 / A#2 / C#3 / E3 / F#3. Bass drum stands in for taiko (keyed at D2,
+   * pitched-down hits get bigger/boomier — right direction for a don).
+   * ----------------------------------------------------------------------- */
+  timpani: {
+    folder: 'timpani',
+    urls: { 'F#2': 'Fs2.mp3', 'A#2': 'As2.mp3', 'C#3': 'Cs3.mp3', 'E3': 'E3.mp3', 'F#3': 'Fs3.mp3' },
+    release: 1.4,
+    gain: 0.8,
+    pan: 0.3, verb: 0.4,
+  },
+  taiko: {
+    folder: 'taiko',
+    urls: { 'D2': 'D2.mp3' },
+    release: 1.0,
+    gain: 0.85,
+    pan: 0, verb: 0.35,
   },
 
   /* --- Chinese folk + choir (FluidR3_GM via gleitz/midi-js-soundfonts)
@@ -203,28 +253,44 @@ const SAMPLERS: Record<string, SamplerDef> = {
     urls: { 'C3': 'C3.mp3', 'F3': 'F3.mp3', 'A3': 'A3.mp3', 'C4': 'C4.mp3', 'F4': 'F4.mp3', 'A4': 'A4.mp3', 'C5': 'C5.mp3' },
     release: 1.2,
     gain: 0.6,
+    pan: -0.12, verb: 0.45,
+    // GM fiddle reads "violin-lite" — push the huqin nasal band and cut the
+    // boxy bottom so it leans toward a 二胡 voice.
+    eq: () => {
+      const t = T();
+      return [
+        new t.Filter({ type: 'highpass', frequency: 200, Q: 0.6 }),
+        new t.Filter({ type: 'peaking', frequency: 1500, Q: 1.1, gain: 5 }),
+      ];
+    },
   },
   pipa: {
     folder: 'pipa',
     urls: { 'C3': 'C3.mp3', 'F3': 'F3.mp3', 'A3': 'A3.mp3', 'C4': 'C4.mp3', 'F4': 'F4.mp3', 'A4': 'A4.mp3', 'C5': 'C5.mp3' },
     gain: 0.65,
+    pan: 0.15, verb: 0.3,
   },
   guzheng: {
     folder: 'guzheng',
     urls: { 'C3': 'C3.mp3', 'F3': 'F3.mp3', 'A3': 'A3.mp3', 'C4': 'C4.mp3', 'F4': 'F4.mp3', 'A4': 'A4.mp3', 'C5': 'C5.mp3' },
     gain: 0.65,
+    pan: -0.2, verb: 0.35,
   },
   guqin: {
     folder: 'guqin',
     urls: { 'C2': 'C2.mp3', 'F2': 'F2.mp3', 'A2': 'A2.mp3', 'C3': 'C3.mp3', 'F3': 'F3.mp3', 'A3': 'A3.mp3', 'C4': 'C4.mp3' },
     release: 2.2,
     gain: 0.7,
+    pan: 0.1, verb: 0.45,
   },
   choir: {
     folder: 'choir',
     urls: { 'C3': 'C3.mp3', 'F3': 'F3.mp3', 'A3': 'A3.mp3', 'C4': 'C4.mp3', 'F4': 'F4.mp3', 'A4': 'A4.mp3', 'C5': 'C5.mp3' },
     release: 1.8,
     gain: 0.5,
+    pan: 0, verb: 0.65,
+    // GM aahs has a synthetic fizz on top — pull it back behind the hall.
+    eq: () => [new (T().Filter)({ type: 'lowpass', frequency: 6500, Q: 0.5 })],
   },
 };
 
@@ -245,8 +311,22 @@ function getSampler(id: string): { sampler: Tone.Sampler; loaded: Promise<void>;
     onload: () => resolve(),
     onerror: (err) => console.error(`[synth] ${id} buffer decode failed`, err),
   });
-  const gain = new t.Gain(def.gain ?? 0.6).connect(fxNode());
-  sampler.connect(gain);
+  // sampler → [eq stages] → gain → panner → dry bus + reverb send
+  let head: Tone.ToneAudioNode = sampler;
+  for (const node of def.eq?.() ?? []) {
+    head.connect(node);
+    head = node;
+  }
+  const gain = new t.Gain(def.gain ?? 0.6);
+  head.connect(gain);
+  const panner = new t.Panner(def.pan ?? 0);
+  gain.connect(panner);
+  panner.connect(fxNode());
+  if (reverbIn) {
+    const send = new t.Gain(def.verb ?? 0.35);
+    panner.connect(send);
+    send.connect(reverbIn);
+  }
   slot = { sampler, loaded, gain };
   samplerCache.set(id, slot);
   return slot;
@@ -297,8 +377,17 @@ function getSynth(id: string): Tone.ToneAudioNode | null {
     head.connect(node);
     head = node;
   }
-  const gain = new (T().Gain)(recipe.gain ?? 0.55).connect(fxNode());
+  const t = T();
+  const gain = new t.Gain(recipe.gain ?? 0.55);
   head.connect(gain);
+  const panner = new t.Panner(recipe.pan ?? 0);
+  gain.connect(panner);
+  panner.connect(fxNode());
+  if (reverbIn) {
+    const send = new t.Gain(recipe.verb ?? 0.35);
+    panner.connect(send);
+    send.connect(reverbIn);
+  }
   inst = built;
   synthCache.set(id, inst);
   return inst;
@@ -467,25 +556,7 @@ const PHRASES: Record<string, SynthPhrase> = {
 /* -------------------------------------------------------------------------- */
 
 const RECIPES: Record<string, SynthRecipe> = {
-  timpani: {
-    build: () =>
-      new (T().MembraneSynth)({
-        pitchDecay: 0.12,
-        octaves: 6,
-        envelope: { attack: 0.001, decay: 1.2, sustain: 0, release: 1.8 },
-      }) as unknown as Tone.PolySynth,
-    gain: 0.7,
-  },
-
-  taiko: {
-    build: () =>
-      new (T().MembraneSynth)({
-        pitchDecay: 0.05,
-        octaves: 4,
-        envelope: { attack: 0.001, decay: 0.45, sustain: 0, release: 0.5 },
-      }) as unknown as Tone.PolySynth,
-    gain: 0.75,
-  },
+  /* timpani / taiko moved to SAMPLERS — real VSCO-2-CE hits. */
 
   celesta: {
     build: () => {
@@ -499,6 +570,7 @@ const RECIPES: Record<string, SynthRecipe> = {
       });
     },
     gain: 0.38,
+    pan: -0.2, verb: 0.4,
   },
 
   'synth-pad': {
@@ -519,11 +591,13 @@ const RECIPES: Record<string, SynthRecipe> = {
       ];
     },
     gain: 0.4,
+    pan: 0, verb: 0.5,
   },
 
   'pizzicato-strings': {
     build: () => new (T().PluckSynth)({ attackNoise: 0.8, dampening: 4000, resonance: 0.91 }) as unknown as Tone.PolySynth,
     gain: 0.65,
+    pan: 0.1, verb: 0.3,
   },
 
   // 虚无 — a dedicated ethereal pad (the old void preview was two lone guqin
@@ -558,5 +632,6 @@ const RECIPES: Record<string, SynthRecipe> = {
       ];
     },
     gain: 0.34,
+    pan: 0, verb: 0.15, // has its own cavernous reverb in-chain
   },
 };

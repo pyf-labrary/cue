@@ -363,22 +363,43 @@ class CompositionPlayerImpl {
     const remaining = clip.startSec + clip.durSec - startAt;
     if (remaining <= 0) return;
     const delay = Math.max(0, (clip.startSec - fromSec) * 1000);
-    const tid = window.setTimeout(() => {
-      if (session !== this.session) return;
-      if (!this.shouldPlay(clip)) return;
-      const notes = Array.isArray(clip.hold) ? clip.hold : [clip.hold];
-      const v = (clip.vel ?? 0.5) * clip.vol * this.laneGain(clip.lane);
-      const dur = clip.durSec - Math.max(0, fromSec - clip.startSec);
-      if (handle.kind === 'sampler') {
-        if (!handle.sampler.loaded) return;
-        for (const n of notes) {
-          handle.sampler.triggerAttackRelease(n, dur, toneNow() + 0.02, v);
-        }
-      } else {
+    const notes = Array.isArray(clip.hold) ? clip.hold : [clip.hold];
+
+    if (handle.kind !== 'sampler') {
+      // Synths sustain for real — one long trigger is correct.
+      const tid = window.setTimeout(() => {
+        if (session !== this.session) return;
+        if (!this.shouldPlay(clip)) return;
+        const v = (clip.vel ?? 0.5) * clip.vol * this.laneGain(clip.lane);
+        const dur = clip.durSec - Math.max(0, fromSec - clip.startSec);
         (handle.synth as Tone.PolySynth).triggerAttackRelease(notes, dur, toneNow() + 0.02, v);
-      }
-    }, delay);
-    this.timeoutIds.push(tid);
+      }, delay);
+      this.timeoutIds.push(tid);
+      return;
+    }
+
+    // Sampler buffers are a few seconds long — a single trigger on a 20-30s
+    // drone bed dies long before the clip ends and the floor silently drops
+    // out. Retrigger in overlapping segments; the sampler's release envelope
+    // crossfades the seams, and small velocity/offset variation per segment
+    // keeps the bed breathing instead of looping.
+    const SEG = 3.2;
+    const OVERLAP = 0.8;
+    const total = clip.durSec - Math.max(0, fromSec - clip.startSec);
+    for (let off = 0; off < total; off += SEG) {
+      const segDur = Math.min(SEG + OVERLAP, total - off);
+      const segDelay = delay + off * 1000;
+      const tid = window.setTimeout(() => {
+        if (session !== this.session) return;
+        if (!this.shouldPlay(clip)) return;
+        if (!handle.sampler.loaded) return;
+        const v = (clip.vel ?? 0.5) * clip.vol * this.laneGain(clip.lane) * (0.94 + Math.random() * 0.12);
+        for (const n of notes) {
+          handle.sampler.triggerAttackRelease(n, segDur, toneNow() + 0.02 + Math.random() * 0.04, v);
+        }
+      }, segDelay);
+      this.timeoutIds.push(tid);
+    }
   }
 
   private startTicker(): void {

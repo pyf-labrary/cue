@@ -130,7 +130,7 @@ export default function Layout() {
           <div>
             <div className="h-eyebrow mb-3">素材出处</div>
             <p>
-              乐器采样：Philharmonia Orchestra Samples (CC-BY-NC)、Freesound (CC0)、Salamander Grand Piano。影视片段 ≤30s 以教学目的引用，版权归原方。
+              乐器采样：Philharmonia Orchestra Samples (CC-BY-NC)、VSCO-2 Community Edition (CC0)、Freesound (CC0)、Salamander Grand Piano。影视片段 ≤30s 以教学目的引用，版权归原方。
             </p>
           </div>
           <div>
