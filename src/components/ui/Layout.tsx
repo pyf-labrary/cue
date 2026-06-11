@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
 import { audioEngine } from '@/lib/audioEngine';
 import { SoundWave } from '@/components/visual/Decorations';
@@ -16,8 +16,10 @@ const NAV = [
 export default function Layout() {
   const [menuOpen, setMenuOpen] = useState(false);
   const loc = useLocation();
-  // Close mobile menu on navigation
-  useNavCloseEffect(() => setMenuOpen(false), loc.pathname);
+  // Close mobile menu on navigation. Depend on pathname ONLY — a fresh close
+  // closure every render would re-run the effect and slam the menu shut the
+  // same render it opens.
+  useEffect(() => setMenuOpen(false), [loc.pathname]);
 
   return (
     <div className="min-h-full flex flex-col">
@@ -134,18 +136,12 @@ export default function Layout() {
           <div>
             <div className="h-eyebrow mb-3">技术</div>
             <p>
-              Vite · React · Tailwind · Howler · Wavesurfer。大文件托管在
-              <span className="text-ink-100"> ftp.ssbx.site</span>。
+              Vite · React · Tailwind · Tone.js · Howler。所有声音在你的浏览器里实时合成，
+              没有后端、没有账号、不收集任何数据。
             </p>
           </div>
         </div>
       </footer>
     </div>
   );
-}
-
-/** Closes the menu on every route change. */
-import { useEffect } from 'react';
-function useNavCloseEffect(close: () => void, pathname: string) {
-  useEffect(() => close(), [pathname, close]);
 }

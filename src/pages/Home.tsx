@@ -65,7 +65,7 @@ export default function Home() {
         </div>
 
         <div className="flex justify-center">
-          <div className="relative">
+          <div className="relative w-full max-w-[520px]">
             <EmotionWheel
               active={active}
               onHover={setActive}

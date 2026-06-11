@@ -10,6 +10,7 @@ import {
   makeNoteClip,
   makeDroneClip,
   withClip,
+  nextClipStart,
   type Composition,
 } from '@/lib/composition';
 import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
@@ -68,7 +69,7 @@ export default function Sandbox() {
   const isEmpty = totalClips === 0;
 
   function addLoop(loop: Loop) {
-    const startSec = Math.min(state.currentSec, Math.max(0, composition.durationSec - loop.durSec));
+    const startSec = nextClipStart(composition, loop.suggestedLane, state.currentSec, loop.durSec);
     const clip =
       loop.kind === 'drone'
         ? makeDroneClip({

@@ -14,6 +14,7 @@ import {
   makeNoteClip,
   makeDroneClip,
   withClip,
+  nextClipStart,
 } from '@/lib/composition';
 import { compositionPlayer, useCompositionPlayer } from '@/lib/compositionPlayer';
 import { useTransportShortcuts, useLaneShortcuts } from '@/lib/useKeyboardShortcuts';
@@ -52,8 +53,12 @@ export default function LessonPage() {
     );
   }
 
-  const beat = lesson.beats[stepIdx];
+  // Clamp: when navigating from a longer lesson to a shorter one, the render
+  // with the stale stepIdx happens BEFORE the reset effect — without the clamp
+  // beats[stepIdx] is undefined and the whole app white-screens.
   const total = lesson.beats.length;
+  const safeIdx = Math.min(stepIdx, total - 1);
+  const beat = lesson.beats[safeIdx];
 
   return (
     <div className="px-6 lg:px-10 py-10">
@@ -77,7 +82,7 @@ export default function LessonPage() {
         </div>
 
         {/* Intro pull-quote (only on first step) */}
-        {stepIdx === 0 && (
+        {safeIdx === 0 && (
           <header className="mb-8">
             <p className="text-ink-200 leading-relaxed border-l-2 border-accent/40 pl-4">
               {lesson.intro}
@@ -89,29 +94,46 @@ export default function LessonPage() {
         <BeatView lesson={lesson} beat={beat} />
 
         {/* Stepper */}
-        <div className="mt-10 flex items-center justify-between border-t border-ink-700/60 pt-6">
-          <button
-            type="button"
-            disabled={stepIdx === 0}
-            onClick={() => setStepIdx((i) => Math.max(0, i - 1))}
-            className="text-sm text-ink-400 hover:text-ink-100 disabled:opacity-30 disabled:hover:text-ink-400 transition"
-          >
-            ← 上一步
-          </button>
-          <div className="font-mono text-xs text-ink-500">
-            {stepIdx + 1} / {total}
+        <div className="mt-10 border-t border-ink-700/60 pt-6">
+          <div className="flex items-center justify-center gap-2 mb-5" role="progressbar" aria-valuenow={safeIdx + 1} aria-valuemax={total}>
+            {lesson.beats.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setStepIdx(i)}
+                aria-label={`第 ${i + 1} 步`}
+                className="h-1.5 rounded-full transition-all duration-300"
+                style={{
+                  width: i === safeIdx ? 28 : 14,
+                  background: i < safeIdx ? 'rgba(230,195,107,0.55)' : i === safeIdx ? '#E6C36B' : 'rgba(255,255,255,0.12)',
+                }}
+              />
+            ))}
           </div>
-          {stepIdx < total - 1 ? (
+          <div className="flex items-center justify-between">
             <button
               type="button"
-              onClick={() => setStepIdx((i) => i + 1)}
-              className="text-sm text-accent hover:underline"
+              disabled={safeIdx === 0}
+              onClick={() => setStepIdx(Math.max(0, safeIdx - 1))}
+              className="text-sm text-ink-400 hover:text-ink-100 disabled:opacity-30 disabled:hover:text-ink-400 transition"
             >
-              下一步 →
+              ← 上一步
             </button>
-          ) : (
-            <NextLessonLink lesson={lesson} />
-          )}
+            <div className="font-mono text-xs text-ink-500">
+              {safeIdx + 1} / {total}
+            </div>
+            {safeIdx < total - 1 ? (
+              <button
+                type="button"
+                onClick={() => setStepIdx(safeIdx + 1)}
+                className="text-sm text-accent hover:underline"
+              >
+                下一步 →
+              </button>
+            ) : (
+              <NextLessonLink lesson={lesson} />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -506,7 +528,7 @@ function SandboxBeat({ body, starter }: { body: string; starter: Composition }) 
   }, [comp, warmed]);
 
   function addLoop(loop: Loop) {
-    const startSec = Math.min(state.currentSec, Math.max(0, comp.durationSec - loop.durSec));
+    const startSec = nextClipStart(comp, loop.suggestedLane, state.currentSec, loop.durSec);
     const clip =
       loop.kind === 'drone'
         ? makeDroneClip({

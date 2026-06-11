@@ -301,6 +301,27 @@ export function withClip(comp: Composition, clip: Clip): Composition {
   return { ...comp, clips: [...comp.clips, clip] };
 }
 
+/**
+ * Pick a start for a new clip on `lane`: the preferred spot (playhead) if it's
+ * free, otherwise appended after the lane's last clip — repeated picks no
+ * longer pile every clip onto the same start point.
+ */
+export function nextClipStart(
+  comp: Composition,
+  lane: TrackId,
+  preferredSec: number,
+  durSec: number,
+): number {
+  const laneClips = comp.clips.filter((c) => c.lane === lane);
+  const collides = (s: number) =>
+    laneClips.some((c) => s < c.startSec + c.durSec && s + durSec > c.startSec);
+  let start = preferredSec;
+  if (collides(start) && laneClips.length) {
+    start = Math.max(...laneClips.map((c) => c.startSec + c.durSec));
+  }
+  return Math.max(0, Math.min(start, Math.max(0, comp.durationSec - durSec)));
+}
+
 export function withoutClip(comp: Composition, id: ClipId): Composition {
   return { ...comp, clips: comp.clips.filter((c) => c.id !== id) };
 }

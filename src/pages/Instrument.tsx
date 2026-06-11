@@ -151,8 +151,10 @@ function PianoRange({ lo, hi }: { lo: number; hi: number }) {
     return whiteKeys.indexOf(m - 1);
   };
 
-  const loIdx = midiToWhiteIdx(lo);
-  const hiIdx = midiToWhiteIdx(hi);
+  // Clamp to the drawn C2–C7 window: violin/celesta/piano etc. exceed it, and
+  // an out-of-range midi yields indexOf === -1 → negative-width <rect> errors.
+  const loIdx = Math.max(0, midiToWhiteIdx(Math.max(lo, start)));
+  const hiIdx = Math.max(loIdx, midiToWhiteIdx(Math.min(hi, end)));
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="音域钢琴键示意">

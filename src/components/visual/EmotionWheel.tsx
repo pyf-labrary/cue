@@ -40,10 +40,9 @@ export default function EmotionWheel({ size = 520, active, onHover, onSelect }: 
 
   return (
     <svg
-      width={size}
-      height={size}
       viewBox={`0 0 ${size} ${size}`}
-      className="select-none"
+      className="select-none w-full h-auto"
+      style={{ maxWidth: size }}
       role="img"
       aria-label="情绪光谱：12 种基础情绪选择器"
     >
