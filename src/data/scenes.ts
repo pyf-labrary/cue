@@ -132,10 +132,12 @@ export const SCENES: Scene[] = [
       mx: [
         // The two-note shark cell (E–F semitone), accelerating + crescendoing
         // across four phases — Williams' actual structural device.
-        ...jawsPulse(0,  8,  1.4,  0.28, 0.14),
-        ...jawsPulse(8,  16, 0.7,  0.44, 0.16),
-        ...jawsPulse(16, 24, 0.42, 0.6,  0.18),
-        ...jawsPulse(24, 30, 0.28, 0.82, 0.18),
+        // Floor raised from .28 — sub-bass at pp is inaudible on laptop
+        // speakers and the opening read as dead air. Crescendo slope kept.
+        ...jawsPulse(0,  8,  1.4,  0.42, 0.12),
+        ...jawsPulse(8,  16, 0.7,  0.54, 0.14),
+        ...jawsPulse(16, 24, 0.42, 0.68, 0.16),
+        ...jawsPulse(24, 30, 0.28, 0.84, 0.16),
         // Cellos add low weight under the build — slow swells on the same E–F.
         { inst: 'cello', note: 'E2', dur: '1n', at: 16, vel: 0.4 },
         { inst: 'cello', note: 'F2', dur: '1n', at: 20, vel: 0.5 },
@@ -165,9 +167,11 @@ export const SCENES: Scene[] = [
         { inst: 'timpani', note: 'E2', dur: '2n', at: 28.5, vel: 1.0 },
       ],
       nx: [
-        // Deep-water bed: a low open fifth, barely there; cello sub joins at
-        // the climax to thicken the bottom.
-        { inst: 'synth-pad', note: ['E2', 'B2'], startAt: 0, endAt: 30, vel: 0.13 },
+        // Deep-water bed: a low open fifth with a mid-register shimmer an
+        // octave up so small speakers hear *something* from bar one; cello
+        // sub joins at the climax to thicken the bottom.
+        { inst: 'synth-pad', note: ['E2', 'B2'], startAt: 0, endAt: 30, vel: 0.18 },
+        { inst: 'synth-pad', note: ['E3', 'B3'], startAt: 0, endAt: 30, vel: 0.08 },
         { inst: 'cello', note: 'E2', startAt: 22, endAt: 30, vel: 0.16 },
       ],
     },
